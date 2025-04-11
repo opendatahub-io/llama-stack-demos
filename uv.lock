@@ -312,7 +312,7 @@ wheels = [
 ]
 
 [[package]]
-name = "llama-stack-on-ocp"
+name = "llama-stack-demos"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

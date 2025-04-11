@@ -1,7 +1,7 @@
 [project]
-name = "llama-stack-on-ocp"
+name = "llama-stack-demos"
 version = "0.1.0"
-description = "llama-stack-on-ocp"
+description = "llama-stack-demos"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
