@@ -271,18 +271,15 @@ def run_test(server_type, model, query_obj, llama_client, logger):
         logger.info(f"Tool used: {tools_used} Tool expected: {expected_tool_call} match: {tool_call_match} ")
 
         #Check inference was not empty
+        final_response = ""
         try:
-            inference_not_empty = True if steps[2].api_model_response.content.strip() != '' else False
+            final_response = steps[2].api_model_response.content.strip()
+            inference_not_empty = True if final_response != '' else False
         except Exception as e:
             logger.error(f"Error checking inference content: {e}")
             inference_not_empty = False
         logger.info(f'Inference not empty: {inference_not_empty}')
-
-        # Log the response
-        logger.info(f"Query '{query_id}' succeeded with model {model}")
-        # Commenting this out as this takes a long time, change stream to False in create_turn
-        # for log in EventLogger().log(response):
-        #     log.print()
+        logger.info(f"Query '{query_id}' succeeded with model {model} and the response \n {final_response}")
         
         # Record success metrics
         add_metric(

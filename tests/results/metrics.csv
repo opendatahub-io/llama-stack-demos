@@ -1,0 +1,59 @@
+timestamp,server_type,model,query_id,status,tool_call_match,inference_not_empty,error
+2025-04-11 16:45:41,ansible,meta-llama/Llama-3.2-3B-Instruct,list_recent_five_passed_jobs,SUCCESS,False,True,
+2025-04-11 16:46:09,ansible,meta-llama/Llama-3.2-3B-Instruct,list_recent_five_failed_jobs,SUCCESS,False,True,
+2025-04-11 16:46:14,ansible,meta-llama/Llama-3.2-3B-Instruct,show_me_all_inventories_used,SUCCESS,True,True,
+2025-04-11 16:46:17,ansible,meta-llama/Llama-3.2-3B-Instruct,give_me_the_name_and,SUCCESS,True,True,
+2025-04-11 16:46:21,ansible,meta-llama/Llama-3.2-3B-Instruct,give_me_the_list_of,SUCCESS,True,True,
+2025-04-11 16:46:23,ansible,meta-llama/Llama-3.2-3B-Instruct,what_job_templates_use_by,FAILURE,False,False,"Turn did not complete. Error: 400: Invalid value: Tool get_job_templates not found in provided tools, registered tools: create_inventory, create_inventory_source, create_job_template, create_project, delete_inventory, delete_inventory_source, get_inventory, get_inventory_source, get_job_template, job_logs, job_status, list_inventories, list_inventory_sources, list_job_templates, list_jobs, list_recent_jobs, run_job, sync_inventory_source, update_inventory_source"
+2025-04-11 16:46:26,ansible,meta-llama/Llama-3.2-3B-Instruct,get_details_of_inventory_id,SUCCESS,False,False,
+2025-04-11 16:46:30,ansible,meta-llama/Llama-3.2-3B-Instruct,list_the_ids_of_different,SUCCESS,True,True,
+2025-04-11 16:46:33,github,meta-llama/Llama-3.2-3B-Instruct,search_for_top_5_python,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:46:47,github,meta-llama/Llama-3.2-3B-Instruct,fetch_the_contents_of_the,SUCCESS,True,True,
+2025-04-11 16:46:51,github,meta-llama/Llama-3.2-3B-Instruct,list_the_most_recent_3,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:46:55,github,meta-llama/Llama-3.2-3B-Instruct,list_the_current_open_issues,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:46:58,github,meta-llama/Llama-3.2-3B-Instruct,search_for_issue_mentioning_'streamlit,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:02,github,meta-llama/Llama-3.2-3B-Instruct,search_for_the_user_'rhetbot',FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:05,github,meta-llama/Llama-3.2-3B-Instruct,get_the_details_of_issue,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:08,github,meta-llama/Llama-3.2-3B-Instruct,get_the_details_of_pull,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:13,github,meta-llama/Llama-3.2-3B-Instruct,list_the_top_3_most,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:16,github,meta-llama/Llama-3.2-3B-Instruct,get_the_files_changed_in,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:20,github,meta-llama/Llama-3.2-3B-Instruct,get_pull_request_status_of,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:24,github,meta-llama/Llama-3.2-3B-Instruct,get_pull_request_comments_of,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:28,github,meta-llama/Llama-3.2-3B-Instruct,get_the_reviews_of_pull,FAILURE,False,False,Turn did not complete. Error: 500: Internal server error: An unexpected error occurred.
+2025-04-11 16:47:59,openshift,meta-llama/Llama-3.2-3B-Instruct,what_pods_are_running_in,SUCCESS,True,True,
+2025-04-11 16:48:02,openshift,meta-llama/Llama-3.2-3B-Instruct,can_you_delete_the_pod,SUCCESS,True,True,
+2025-04-11 16:48:07,openshift,meta-llama/Llama-3.2-3B-Instruct,can_you_fetch_the_logs,SUCCESS,True,True,
+2025-04-11 16:48:20,openshift,meta-llama/Llama-3.2-3B-Instruct,create_a_pod_with_the,SUCCESS,False,True,
+2025-04-11 16:48:26,openshift,meta-llama/Llama-3.2-3B-Instruct,what_are_the_events_in,SUCCESS,True,True,
+2025-04-11 16:48:28,custom,meta-llama/Llama-3.2-3B-Instruct,can_you_generate_a_number,SUCCESS,True,True,
+2025-04-11 16:48:30,custom,meta-llama/Llama-3.2-3B-Instruct,if_user's_score_is_70,SUCCESS,True,True,
+2025-04-11 16:48:32,custom,meta-llama/Llama-3.2-3B-Instruct,if_user's_score_is_25,SUCCESS,True,True,
+2025-04-11 16:48:34,ansible,ibm-granite/granite-3.2-8b-instruct,list_recent_five_passed_jobs,SUCCESS,True,True,
+2025-04-11 16:48:37,ansible,ibm-granite/granite-3.2-8b-instruct,list_recent_five_failed_jobs,SUCCESS,True,True,
+2025-04-11 16:48:38,ansible,ibm-granite/granite-3.2-8b-instruct,show_me_all_inventories_used,SUCCESS,False,False,
+2025-04-11 16:48:40,ansible,ibm-granite/granite-3.2-8b-instruct,give_me_the_name_and,SUCCESS,True,True,
+2025-04-11 16:48:41,ansible,ibm-granite/granite-3.2-8b-instruct,give_me_the_list_of,SUCCESS,False,False,
+2025-04-11 16:48:58,ansible,ibm-granite/granite-3.2-8b-instruct,what_job_templates_use_by,SUCCESS,True,True,
+2025-04-11 16:49:06,ansible,ibm-granite/granite-3.2-8b-instruct,get_details_of_inventory_id,SUCCESS,True,True,
+2025-04-11 16:49:08,ansible,ibm-granite/granite-3.2-8b-instruct,list_the_ids_of_different,SUCCESS,True,True,
+2025-04-11 16:49:18,github,ibm-granite/granite-3.2-8b-instruct,search_for_top_5_python,SUCCESS,True,True,
+2025-04-11 16:49:27,github,ibm-granite/granite-3.2-8b-instruct,fetch_the_contents_of_the,SUCCESS,True,True,
+2025-04-11 16:49:36,github,ibm-granite/granite-3.2-8b-instruct,list_the_most_recent_3,SUCCESS,True,True,
+2025-04-11 16:49:51,github,ibm-granite/granite-3.2-8b-instruct,list_the_current_open_issues,SUCCESS,True,True,
+2025-04-11 16:49:57,github,ibm-granite/granite-3.2-8b-instruct,search_for_issue_mentioning_'streamlit,SUCCESS,True,True,
+2025-04-11 16:50:02,github,ibm-granite/granite-3.2-8b-instruct,search_for_the_user_'rhetbot',SUCCESS,False,True,
+2025-04-11 16:50:07,github,ibm-granite/granite-3.2-8b-instruct,get_the_details_of_issue,SUCCESS,True,True,
+2025-04-11 16:50:15,github,ibm-granite/granite-3.2-8b-instruct,get_the_details_of_pull,SUCCESS,True,True,
+2025-04-11 16:50:24,github,ibm-granite/granite-3.2-8b-instruct,list_the_top_3_most,SUCCESS,True,True,
+2025-04-11 16:50:29,github,ibm-granite/granite-3.2-8b-instruct,get_the_files_changed_in,SUCCESS,True,True,
+2025-04-11 16:50:33,github,ibm-granite/granite-3.2-8b-instruct,get_pull_request_status_of,SUCCESS,True,True,
+2025-04-11 16:50:42,github,ibm-granite/granite-3.2-8b-instruct,get_pull_request_comments_of,SUCCESS,False,True,
+2025-04-11 16:50:46,github,ibm-granite/granite-3.2-8b-instruct,get_the_reviews_of_pull,SUCCESS,True,True,
+2025-04-11 16:50:48,openshift,ibm-granite/granite-3.2-8b-instruct,what_pods_are_running_in,SUCCESS,False,False,
+2025-04-11 16:50:50,openshift,ibm-granite/granite-3.2-8b-instruct,can_you_delete_the_pod,SUCCESS,True,True,
+2025-04-11 16:50:53,openshift,ibm-granite/granite-3.2-8b-instruct,can_you_fetch_the_logs,SUCCESS,True,True,
+2025-04-11 16:51:01,openshift,ibm-granite/granite-3.2-8b-instruct,create_a_pod_with_the,SUCCESS,True,True,
+2025-04-11 16:51:07,openshift,ibm-granite/granite-3.2-8b-instruct,what_are_the_events_in,SUCCESS,True,True,
+2025-04-11 16:51:08,custom,ibm-granite/granite-3.2-8b-instruct,can_you_generate_a_number,SUCCESS,False,False,
+2025-04-11 16:51:10,custom,ibm-granite/granite-3.2-8b-instruct,if_user's_score_is_70,SUCCESS,False,False,
+2025-04-11 16:51:12,custom,ibm-granite/granite-3.2-8b-instruct,if_user's_score_is_25,SUCCESS,False,False,
