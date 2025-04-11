@@ -1,79 +1,74 @@
-apiVersion: apps/v1
 kind: Deployment
+apiVersion: apps/v1
 metadata:
-  annotations:
+  name: granite-8b
   labels:
     app: granite-8b
-  name: granite-8b
+    app.kubernetes.io/instance: llama-vllm
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: granite-8b
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: granite-8b
     spec:
-      containers:
-      - args:
-        - --model
-        - ibm-granite/granite-3.2-8b-instruct
-        - --max-model-len
-        - "128000"
-        - --enable-auto-tool-choice
-        - --chat-template
-        - /app/tool_chat_template_granite.jinja
-        - --tool-call-parser=granite
-        - --port
-        - "8000"
-        env:
-        - name: VLLM_PORT
-          value: "8000"
-        - name: HUGGING_FACE_HUB_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: HF_TOKEN
-              name: huggingface-secret
-        image: vllm/vllm-openai:v0.7.3
-        imagePullPolicy: Always
-        name: granite-8b
-        ports:
-        - containerPort: 8000
-          protocol: TCP
-        resources:
-          limits:
-            nvidia.com/gpu: "1"
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /.cache
-          name: hf-cache
-        - mountPath: /.triton
-          name: triton
-        - mountPath: /app
-          name: chat-template
-        - mountPath: /.config
-          name: config
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      terminationGracePeriodSeconds: 30
       volumes:
-      - emptyDir: {}
-        name: hf-cache
-      - emptyDir: {}
-        name: triton
-      - configMap:
-          defaultMode: 420
-          name: granite-chat
-        name: chat-template
-      - emptyDir: {}
-        name: config
+        - name: hf-cache
+          emptyDir: {}
+        - name: triton
+          emptyDir: {}
+        - name: chat-template
+          configMap:
+            name: granite-chat
+            defaultMode: 420
+        - name: config
+          emptyDir: {}
+      containers:
+        - resources:
+            limits:
+              nvidia.com/gpu: '1'
+          terminationMessagePath: /dev/termination-log
+          name: granite-8b
+          env:
+            - name: VLLM_PORT
+              value: '8000'
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: huggingface-secret
+                  key: HF_TOKEN
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /.cache
+            - name: triton
+              mountPath: /.triton
+            - name: chat-template
+              mountPath: /app
+            - name: config
+              mountPath: /.config
+          terminationMessagePolicy: File
+          image: 'vllm/vllm-openai:v0.7.3'
+          args:
+            - '--model'
+            - ibm-granite/granite-3.2-8b-instruct
+            - '--max-model-len'
+            - '128000'
+            - '--enable-auto-tool-choice'
+            - '--chat-template'
+            - /app/tool_chat_template_granite.jinja
+            - '--tool-call-parser=granite'
+            - '--port'
+            - '8000'
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler

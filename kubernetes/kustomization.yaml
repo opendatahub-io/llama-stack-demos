@@ -7,18 +7,10 @@ resources:
   - llama-serve/granite-8b/route.yaml
   - llama-serve/granite-8b/service.yaml
   - llama-serve/granite-8b/vllm.yaml
-  - llama-serve/llama3.1-70b/chat-template.yaml
-  - llama-serve/llama3.1-70b/route.yaml
-  - llama-serve/llama3.1-70b/service.yaml
-  - llama-serve/llama3.1-70b/vllm.yaml
   - llama-serve/llama3.2-3b/chat-template.yaml
   - llama-serve/llama3.2-3b/route.yaml
   - llama-serve/llama3.2-3b/service.yaml
   - llama-serve/llama3.2-3b/vllm.yaml
-  - llama-serve/watt-8b/chat-template.yaml
-  - llama-serve/watt-8b/route.yaml
-  - llama-serve/watt-8b/service.yaml
-  - llama-serve/watt-8b/vllm.yaml
 
   # llama-stack resources
   - llama-stack/configmap.yaml
@@ -28,10 +20,6 @@ resources:
   - llama-stack/service.yaml
   - llama-stack/template.yaml
 
-  # safety-model resources
-  - safety-model/svc.yaml
-  - safety-model/vllm.yaml
-
   # streamlit-client resources
   - streamlit-client/deployment.yaml
   - streamlit-client/route.yaml
@@ -39,7 +27,12 @@ resources:
   - streamlit-client/serviceacount.yaml
 
   # mcp-servers resources
-  - mcp-servers/ansible-mcp
-  - mcp-servers/custom-mcp
-  - mcp-servers/github-mcp
-  - mcp-servers/openshift-mcp
+  - mcp-servers/ansible-mcp/ansible-deployment.yaml
+  - mcp-servers/ansible-mcp/ansible-service.yaml
+  - mcp-servers/custom-mcp/custom-deployment.yaml
+  - mcp-servers/github-mcp/github-deployment.yaml
+  - mcp-servers/github-mcp/github-service.yaml
+  - mcp-servers/openshift-mcp/openshift-deployment.yaml
+  - mcp-servers/openshift-mcp/openshift-service.yaml
+  - mcp-servers/openshift-mcp/openshift-rolebinding.yaml
+  - mcp-servers/openshift-mcp/openshift-serviceaccount.yaml

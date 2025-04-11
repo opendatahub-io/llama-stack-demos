@@ -32,13 +32,6 @@ data:
           max_tokens: 128000
           api_token: fake
           tls_verify: false
-      - provider_id: vllm-safety
-        provider_type: remote::vllm
-        config:
-          url: ${env.SAFETY_VLLM_URL}
-          max_tokens: 4096
-          api_token: fake
-          tls_verify: false
       - provider_id: sentence-transformers
         provider_type: inline::sentence-transformers
         config: {}
@@ -134,18 +127,12 @@ data:
       model_id: ${env.GRANITE_MODEL}
       provider_id: granite
       model_type: llm
-    - metadata: {}
-      model_id: ${env.SAFETY_MODEL}
-      provider_id: vllm-safety
-      model_type: llm
     - metadata:
         embedding_dimension: 384
       model_id: all-MiniLM-L6-v2
       provider_id: sentence-transformers
       model_type: embedding
-    shields:
-    - shield_id: ${env.SAFETY_MODEL}
-      provider_id: llama-guard
+    shields: []
     vector_dbs: []
     datasets: []
     scoring_fns: []

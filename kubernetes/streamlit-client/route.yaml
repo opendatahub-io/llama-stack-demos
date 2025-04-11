@@ -7,5 +7,5 @@ spec:
     kind: Service
     name: proxy
   tls:
-    termination: Reencrypt
+    termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect

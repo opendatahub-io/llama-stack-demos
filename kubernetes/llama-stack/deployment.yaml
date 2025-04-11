@@ -48,10 +48,6 @@ spec:
               value: om-llamastack
             - name: OTEL_TRACE_ENDPOINT
               value: 'http://localhost:4318/v1/traces'
-            - name: SAFETY_MODEL
-              value: meta-llama/Llama-Guard-3-8B
-            - name: SAFETY_VLLM_URL
-              value: 'http://safety.llama-serve.svc.cluster.local:8000/v1'
             - name: MILVUS_DB_PATH
               value: milvus.db
           ports:

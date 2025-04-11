@@ -1,9 +1,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: granite-8b-template
-  labels:
-    app: granite-8b
+  name: granite-chat
 data:
   tool_chat_template_granite.jinja: |
     {%- if tools %}

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: llama-stack
+spec:
+  generators:
+    - list:
+        elements:
+          - name: llama-stack
+            path: kubernetes/llama-stack
+          - name: mcp-servers
+            path: kubernetes/mcp-servers
+          - name: granite-8b
+            path: kubernetes/llama-serve/granite-8b
+          - name: llama3-2-3b
+            path: kubernetes/llama-serve/llama3.2-3b
+          - name: streamlit
+            path: kubernetes/streamlit-client
+  template:
+    metadata:
+      name: '{{name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/opendatahub-io/llama-stack-demos.git
+        targetRevision: main
+        path: '{{path}}'
+        directory:
+          recurse: true
+          exclude: "kustomization.yaml"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: llama-serve
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

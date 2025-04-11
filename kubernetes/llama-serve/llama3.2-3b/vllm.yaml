@@ -1,78 +1,90 @@
-apiVersion: apps/v1
 kind: Deployment
+apiVersion: apps/v1
 metadata:
-  annotations:
+  name: llama32-3b
   labels:
     app: llama32-3b
-  name: llama32-3b
+    app.kubernetes.io/instance: llama-vllm
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: llama32-3b
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: llama32-3b
+      annotations:
+        sidecar.opentelemetry.io/inject: vllm-otelsidecar
     spec:
-      containers:
-      - args:
-        - --model
-        - meta-llama/Llama-3.2-3B-Instruct
-        - --enable-auto-tool-choice
-        - --chat-template
-        - /app/tool_chat_template_llama3.2_json.jinja
-        - --tool-call-parser
-        - llama3_json
-        - --port
-        - "8000"
-        env:
-        - name: VLLM_PORT
-          value: "8000"
-        - name: HUGGING_FACE_HUB_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: HF_TOKEN
-              name: huggingface-secret
-        image: vllm/vllm-openai:v0.7.3
-        imagePullPolicy: Always
-        name: llama32-3b
-        ports:
-        - containerPort: 8000
-          protocol: TCP
-        resources:
-          limits:
-            nvidia.com/gpu: "1"
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /.cache
-          name: hf-cache
-        - mountPath: /.triton
-          name: triton
-        - mountPath: /app
-          name: chat-template
-        - mountPath: /.config
-          name: config
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      terminationGracePeriodSeconds: 30
       volumes:
-      - emptyDir: {}
-        name: hf-cache
-      - emptyDir: {}
-        name: triton
-      - configMap:
-          defaultMode: 420
-          name: llama32-3b-template
-        name: chat-template
-      - emptyDir: {}
-        name: config
+        - name: hf-cache
+          emptyDir: {}
+        - name: triton
+          emptyDir: {}
+        - name: chat-template
+          configMap:
+            name: llama32-3b-template
+            defaultMode: 420
+        - name: config
+          emptyDir: {}
+      containers:
+        - resources:
+            limits:
+              nvidia.com/gpu: '1'
+          terminationMessagePath: /dev/termination-log
+          name: llama32-3b
+          env:
+            - name: OTEL_EXPORTER_OTLP_TRACES_INSECURE
+              value: 'true'
+            - name: OTEL_SERVICE_NAME
+              value: vllm-llama32-3b
+            - name: VLLM_PORT
+              value: '8000'
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: huggingface-secret
+                  key: HF_TOKEN
+            - name: VLLM_LOGGING_LEVEL
+              value: DEBUG
+            - name: VLLM_TRACE_FUNCTION
+              value: '1'
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /.cache
+            - name: triton
+              mountPath: /.triton
+            - name: chat-template
+              mountPath: /app
+            - name: config
+              mountPath: /.config
+          terminationMessagePolicy: File
+          image: 'vllm/vllm-openai:v0.7.3'
+          args:
+            - '--model'
+            - meta-llama/Llama-3.2-3B-Instruct
+            - '--enable-auto-tool-choice'
+            - '--chat-template'
+            - /app/tool_chat_template_llama3.2_json.jinja
+            - '--tool-call-parser'
+            - llama3_json
+            - '--port'
+            - '8000'
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
