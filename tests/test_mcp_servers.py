@@ -168,7 +168,8 @@ def execute_query(
                 "content": prompt
             }
         ],
-        session_id=session_id
+        session_id=session_id,
+        stream=False
     )
     
     return turn_response
@@ -227,6 +228,9 @@ def run_test(server_type, model, query_obj, llama_client, logger):
     config = server_configs[server_type]
     query_id = get_query_id(query_obj)
     prompt = query_obj['query']
+    expected_tool_call = query_obj['tool_call']
+    tool_call_match = False
+    inference_not_empty = False
     
     # Skip if MCP URL is not set
     if not config["mcp_url"]:
@@ -254,18 +258,29 @@ def run_test(server_type, model, query_obj, llama_client, logger):
             config["toolgroup_id"],
             logger
         )
-        
+        # Get Tool execution and Inference steps
+        steps = response.steps
 
-        # Add logic for matching tool call
-        # Update metrics with new information
-        tool_call_match = True
-        inference_not_empty = True
-        
-        
+        #Get tool used 
+        try:
+            tools_used = steps[1].tool_calls[0].tool_name
+        except Exception as e:
+            logger.error(f"Error extracting tool name: {e}")
+            tools_used = None
+        tool_call_match = True if tools_used == expected_tool_call else False
+        logger.info(f"Tool used: {tools_used} Tool expected: {expected_tool_call} match: {tool_call_match} ")
+
+        #Check inference was not empty
+        try:
+            inference_not_empty = True if steps[2].api_model_response.content.strip() != '' else False
+        except Exception as e:
+            logger.error(f"Error checking inference content: {e}")
+            inference_not_empty = False
+        logger.info(f'Inference not empty: {inference_not_empty}')
+
         # Log the response
         logger.info(f"Query '{query_id}' succeeded with model {model}")
-        
-        # Commenting this out as this takes a long time
+        # Commenting this out as this takes a long time, change stream to False in create_turn
         # for log in EventLogger().log(response):
         #     log.print()
         
