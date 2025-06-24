@@ -1,0 +1,14 @@
+# Lead PM
+* @zanetworker
+
+# Demo Notebooks
+demos/*   @michaelclifford
+
+# Kubernetes objects
+kubernetes/*   @cooktheryan
+
+# Llama stack deployment + operator
+kubernetes/llama-stack/*   @rhdedgar @mfleader
+
+# Observability
+kubernetes/observability/*   @sallyom
