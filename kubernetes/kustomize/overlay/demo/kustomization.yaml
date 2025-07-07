@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - ../../base
   # llama-serve resources
-  - ../../../llama-serve/granite-8b
+  - ../../../llama-serve/llama3.2-3b
   - ../../../mcp-servers/slack-mcp
 
 patchesStrategicMerge:
