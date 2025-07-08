@@ -26,7 +26,9 @@ spec:
         - '--chat-template'
         - /app/data/template/tool_chat_template_llama3.2_json.jinja
         - '--max-model-len'
-        - '110000'
+        - '32768'
+        - '--max-num-seqs'
+        - '8'
       command:
         - python
         - '-m'
