@@ -16,7 +16,7 @@ python -m venv venv
 source venv/bin/activate
 pip install -U .
 
-export CONTAINER_BINARY = podman
+export CONTAINER_BINARY=podman
 USE_COPY_NOT_MOUNT=true LLAMA_STACK_DIR=. llama stack build --template remote-vllm --image-type container
 
 # tag the local container image and push to quay
