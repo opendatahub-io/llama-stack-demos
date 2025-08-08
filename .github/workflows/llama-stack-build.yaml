@@ -30,7 +30,7 @@ jobs:
            sudo apt-get install -y python3-pip
 
       - name: login to quay.io
-        uses: docker/login-action@v3
+        uses: redhat-actions/podman-login@v1
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
@@ -62,24 +62,16 @@ jobs:
           export CONTAINER_BINARY=podman
           llama stack build --config build-external-provider.yaml
 
-      - name: tag the image (with external)
+      - name: tag the image (with external provider)
         if: ${{ inputs.external_provider == true }}
         run: |
           podman tag localhost/llama-stack-demos:${{inputs.version}} quay.io/redhat-et/llama:vllm-${{inputs.version}}-external
-
-      - name: push the image (with external)
-        if: ${{ inputs.external_provider == true }}
-        run: |
           podman push quay.io/redhat-et/llama:vllm-${{inputs.version}}-external
 
-      - name: tag the image (without external)
+      - name: tag the image (without external provider)
         if: ${{ inputs.external_provider == false }}
         run: |
           podman tag localhost/llama-stack-demos:${{inputs.version}} quay.io/redhat-et/llama:vllm-${{inputs.version}}
-
-      - name: push the image (without external)
-        if: ${{ inputs.external_provider == false }}
-        run: |
           podman push quay.io/redhat-et/llama:vllm-${{inputs.version}}
 
   granite-llama-stack-build:
@@ -98,7 +90,7 @@ jobs:
            sudo apt-get install -y python3-pip
 
       - name: login to quay.io
-        uses: docker/login-action@v3
+        uses: redhat-actions/podman-login@v1
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
@@ -117,7 +109,7 @@ jobs:
 
       - name: run llama stack build
         run: |
-          cd distribution/remote-vllm-granite-embedding
+          cd distribution/starter-granite-embedding
           export CONTAINER_BINARY=podman
           mkdir -p /home/runner/.llama/providers.d
           llama stack build --config build.yaml
@@ -125,7 +117,4 @@ jobs:
       - name: tag the image
         run: |
           podman tag localhost/llama-stack-demos:${{inputs.version}} quay.io/redhat-et/llama:vllm-milvus-granite-${{inputs.version}}
-
-      - name: push the image
-        run: |
           podman push quay.io/redhat-et/llama:vllm-milvus-granite-${{inputs.version}}

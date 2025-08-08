@@ -19,7 +19,7 @@ only 4 metrics generated within Llamastack, and these are duplicates of what vLL
       service_name: ${env.OTEL_SERVICE_NAME:llama-stack}
       sinks: ${env.TELEMETRY_SINKS:console, sqlite} <- add env var in deployment to add otel_trace, otel_metric
       otel_trace_endpoint: ${env.OTEL_TRACE_ENDPOINT:} <- add ONLY if opentelemetry receiver endpoint is available.
-      sqlite_db_path: ${env.SQLITE_DB_PATH:~/.llama/distributions/remote-vllm/trace_store.db}
+      sqlite_db_path: ${env.SQLITE_DB_PATH:~/.llama/distributions/starter/trace_store.db}
 ---
 ```
 And, in [kubernetes/llama-stack/deployment.yaml](../llama-stack/deployment.yaml)

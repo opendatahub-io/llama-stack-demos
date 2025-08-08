@@ -3,30 +3,30 @@ distribution_spec:
   description: Use (an external) vLLM server for running LLM inference
   providers:
     inference:
-    - remote::vllm
-    - inline::sentence-transformers
+    - provider_type: remote::vllm
+    - provider_type: inline::sentence-transformers
     vector_io:
-    - inline::milvus
+    - provider_type: inline::milvus
     safety:
-    - inline::llama-guard
+    - provider_type: inline::llama-guard
     agents:
-    - inline::meta-reference
+    - provider_type: inline::meta-reference
     eval:
-    - inline::meta-reference
+    - provider_type: inline::meta-reference
     datasetio:
-    - remote::huggingface
-    - inline::localfs
+    - provider_type: remote::huggingface
+    - provider_type: inline::localfs
     scoring:
-    - inline::basic
-    - inline::llm-as-judge
-    - inline::braintrust
+    - provider_type: inline::basic
+    - provider_type: inline::llm-as-judge
+    - provider_type: inline::braintrust
     telemetry:
-    - inline::meta-reference
+    - provider_type: inline::meta-reference
     tool_runtime:
-    - remote::brave-search
-    - remote::tavily-search
-    - inline::rag-runtime
-    - remote::model-context-protocol
+    - provider_type: remote::brave-search
+    - provider_type: remote::tavily-search
+    - provider_type: inline::rag-runtime
+    - provider_type: remote::model-context-protocol
   container_image: "registry.access.redhat.com/ubi9"
 image_type: container
 image_name: llama-stack-demos

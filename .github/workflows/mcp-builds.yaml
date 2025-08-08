@@ -10,104 +10,56 @@ on:
     - 'kubernetes/mcp-servers/**'
 
 jobs:
-  ansible:
+  mcp:
     runs-on: ubuntu-latest
     environment: ci
+    strategy:
+      matrix:
+        include:
+          - name: ansible
+            dir: kubernetes/mcp-servers/ansible-mcp/mcp-containerfile
+            image: quay.io/redhat-et/mcp-ansible:latest
+          - name: custom
+            dir: kubernetes/mcp-servers/custom-mcp/mcp-containerfile
+            image: quay.io/redhat-et/mcp-custom:latest
+          - name: github
+            dir: kubernetes/mcp-servers/github-mcp/mcp-containerfile
+            image: quay.io/redhat-et/mcp-github:latest
+          - name: openshift
+            dir: kubernetes/mcp-servers/openshift-mcp/mcp-containerfile
+            image: quay.io/redhat-et/mcp-openshift:latest
+          - name: llamastack
+            dir: kubernetes/mcp-servers/llamastack/mcp-containerfile
+            image: quay.io/redhat-et/mcp-llamastack:latest
+          - name: slack
+            dir: kubernetes/mcp-servers/slack-mcp/mcp-containerfile
+            image: quay.io/redhat-et/mcp-slack:latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: login to quay.io
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
+        uses: redhat-actions/podman-login@v1
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
 
-      - name: build and push the ansible mcp server
+      - name: Prepare ansible dependencies
+        if: matrix.name == 'ansible'
         run: |
-           cd kubernetes/mcp-servers/ansible-mcp/mcp-containerfile
-           mkdir -p submodule/mcp
-           curl -ssL -o submodule/mcp/ansible.py https://raw.githubusercontent.com/suppathak/mcp/refs/heads/main/ansible.py
-           podman build -t quay.io/redhat-et/mcp-ansible:latest .
+          cd ${{ matrix.dir }}
+          mkdir -p submodule/mcp
+          curl -ssL -o submodule/mcp/ansible.py https://raw.githubusercontent.com/suppathak/mcp/refs/heads/main/ansible.py
 
-      - name: push the ansible mcp server when merge into main
+      - name: Build ${{ matrix.name }} mcp server
+        run: |
+          cd ${{ matrix.dir }}
+          podman build -t ${{ matrix.image }} .
+
+      - name: Push ${{ matrix.name }} mcp server (on main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-           podman push quay.io/redhat-et/mcp-ansible:latest
-
-  custom:
-    runs-on: ubuntu-latest
-    environment: ci
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: login to quay.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: build and push the custom mcp server
-        run: |
-            cd kubernetes/mcp-servers/custom-mcp/mcp-containerfile
-            podman build -t quay.io/redhat-et/mcp-custom:latest .
-
-      - name: push the ansible mcp server when merge into main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-            podman push quay.io/redhat-et/mcp-custom:latest
-
-  github:
-    runs-on: ubuntu-latest
-    environment: ci
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: login to quay.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: build and push the github mcp server
-        run: |
-            cd kubernetes/mcp-servers/github-mcp/mcp-containerfile
-            podman build -t quay.io/redhat-et/mcp-github:latest .
-
-      - name: push the ansible mcp server when merge into main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-            podman push quay.io/redhat-et/mcp-github:latest
-
-  openshift:
-    runs-on: ubuntu-latest
-    environment: ci
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: login to quay.io
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: build and push the openshift mcp server
-        run: |
-            cd kubernetes/mcp-servers/openshift-mcp/mcp-containerfile
-            podman build -t quay.io/redhat-et/mcp-openshift:latest .
-
-      - name: push the ansible mcp server when merge into main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-            podman push quay.io/redhat-et/mcp-openshift:latest
+          podman push ${{ matrix.image }}

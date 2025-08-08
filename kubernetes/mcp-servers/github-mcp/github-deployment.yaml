@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: github-mcp-server-with-rh-nodejs
+  name: github-mcp-server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: github-mcp-server-with-rh-nodejs
+      app: github-mcp-server
   template:
     metadata:
       labels:
-        app: github-mcp-server-with-rh-nodejs
+        app: github-mcp-server
     spec:
       containers:
-      - name: github-mcp-server-with-rh-nodejs
+      - name: github-mcp-server
         image: quay.io/redhat-et/mcp-github:latest
         imagePullPolicy: Always
         command: ["/bin/sh", "-c"]

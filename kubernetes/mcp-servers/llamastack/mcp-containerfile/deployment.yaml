@@ -16,7 +16,7 @@ spec:
       serviceAccountName: ocp-mcp
       containers:
       - name: mcp-llamastack-server
-        image: quay.io/eoconnor/mcp-llamastack-server:latest
+        image: quay.io/<username>/mcp-llamastack-server:latest
         ports:
           - containerPort: 8000
             protocol: TCP
