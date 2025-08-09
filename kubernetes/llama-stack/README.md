@@ -17,14 +17,14 @@ source venv/bin/activate
 pip install -U .
 
 export CONTAINER_BINARY=podman
-USE_COPY_NOT_MOUNT=true LLAMA_STACK_DIR=. llama stack build --template remote-vllm --image-type container
+USE_COPY_NOT_MOUNT=true LLAMA_STACK_DIR=. llama stack build --distro vllm-gpu --image-type container
 
 # tag the local container image and push to quay
-podman tag localhost/distribution-remote-vllm:dev quay.io/<YOUR QUAY.IO USERNAME OR ORG>/<IMAGE NAME>
+podman tag localhost/distribution-starter:dev quay.io/<YOUR QUAY.IO USERNAME OR ORG>/<IMAGE NAME>
 podman push quay.io/<YOUR QUAY.IO USERNAME OR ORG>/<IMAGE NAME>
 ```
 
-## Building Llamastack with Milvus (in-line)
+## Building Llamastack with Milvus (inline)
 
 If you need to build Llamastack to use Milvus as the default in-line vector db provider in your container image, you can run the following steps:
 
@@ -38,12 +38,12 @@ source venv/bin/activate
 pip install -U .
 ```
 
-Edit the `build.yaml` in the `llama_stack/template/remote-vllm/build.yaml` to update the `vector_io` provider field and `image_type` field as shown below:
+Edit the `build.yaml` in the `llama_stack/template/starter/build.yaml` to update the `vector_io` provider field and `image_type` field as shown below:
 
 ```
   providers:
     vector_io:
-    - inline::milvus
+    - provider_type: inline::milvus
 image_type: container
 ```
 
@@ -51,13 +51,13 @@ Now, we can build the container.
 
 ```
 export CONTAINER_BINARY = podman
-USE_COPY_NOT_MOUNT=true LLAMA_STACK_DIR=. llama stack build --config llama_stack/templates/remote-vllm/build.yaml --image-type container --image-name remote-vllm-milvus
+USE_COPY_NOT_MOUNT=true LLAMA_STACK_DIR=. llama stack build --config llama_stack/templates/starter/build.yaml --image-type container --image-name starter-milvus
 ```
 
 Once the image is built successfully you can push it to quay:
 
 ```
-podman tag localhost/remote-vllm-milvus:<version tag> quay.io/<YOUR QUAY.IO USERNAME OR ORG>/<IMAGE NAME>
+podman tag localhost/starter-milvus:<version tag> quay.io/<YOUR QUAY.IO USERNAME OR ORG>/<IMAGE NAME>
 podman push quay.io/<YOUR QUAY.IO USERNAME OR ORG/<IMAGE NAME>
 ```
 

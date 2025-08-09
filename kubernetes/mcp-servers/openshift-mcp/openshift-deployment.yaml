@@ -18,7 +18,7 @@ spec:
       serviceAccountName: ocp-mcp
       containers:
       - name: ocp-mcp-server
-        image: quay.io/hveeradh/ocp-mcp-server:latest
+        image: quay.io/<username>/ocp-mcp-server:latest
         ports:
           - name: http
             containerPort: 8000

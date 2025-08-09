@@ -7,7 +7,7 @@ This guide will walk you through setting up and running a Llama Stack server wit
 ## **1. Prerequisites**
 Ensure you have the following installed:
 - **Podman** ([Install Podman](https://podman.io/docs/installation))
-- **Python 3.10+**
+- **Python 3.12+**
 - **pip** ([Install pip](https://pip.pypa.io/en/stable/installation/))
 - **Ollama** ([Install Ollama](https://ollama.com/download))
 
@@ -43,7 +43,7 @@ export LLAMA_STACK_PORT=8321
 ## **4. Run Llama Stack Server with Podman**
 Pull the required image:
 ```bash
-podman pull docker.io/llamastack/distribution-ollama
+podman pull docker.io/llamastack/distribution-starter:latest
 ```
 Before executing the next command, make sure to create a local directory to mount into the container’s file system.
 
@@ -66,7 +66,7 @@ If needed, create and use a network:
 podman network create llama-net
 podman run --privileged --network llama-net -it \
   -p $LLAMA_STACK_PORT:$LLAMA_STACK_PORT \
-  llamastack/distribution-ollama \
+  llamastack/distribution-starter \
   --port $LLAMA_STACK_PORT
 ```
 

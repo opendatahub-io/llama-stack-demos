@@ -15,23 +15,23 @@ A secret must be created to allow for the vLLM server to pull in a given model a
 oc create secret generic huggingface-secret --from-literal=HF_TOKEN=hf_values
 ```
 
-## Deploy
+## Deploy model
+
+run
+```bash
+oc apply --kustomize $GIT_ROOT/kubernetes/llama-server/[granite-8b|llama-3.1-70b|llama-3.2-3b|watt-8b]
+```
 
 You can find the deployment files for the different models in their respective directories:
 
-- [granite-8b](./granite-8b)
-    - [vllm.yaml](./granite-8b/vllm.yaml)
 - [llama3.1-70b](./llama3.1-70b)
-    - [vllm.yaml](./llama3.1-70b/vllm.yaml)
-- [llama3.2-3b](./llama3.2-3b)
-    - [vllm.yaml](./llama3.2-3b/vllm.yaml)
+    - [vllm-openai.yaml](./llama3.1-70b/vllm-openai.yaml)
 - [watt-8b](./watt-8b)
-    - [vllm.yaml](./watt-8b/vllm.yaml)
+    - [vllm-openai.yaml](./watt-8b/vllm-openai.yaml)
 
  Once you know which model you want to deploy, you can run the following:
 
 ```
-oc create -f <the model folder for the model you want to deploy>
 oc expose deployment/vllm
 ```
 

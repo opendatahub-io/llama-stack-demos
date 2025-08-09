@@ -26,7 +26,7 @@ podman run --rm \
     -e VLLM_URL=http://localhost/v1 \ # Tweak to the actual URL to the vllm server
     -p 8321:8321 \
     --name llama-stack-server \
-    localhost/llama-stack-demos:0.2.4 # Tweak to the actual tag of the llama stack
+    localhost/llama-stack-demos:0.2.17 # Tweak to the actual tag of the llama stack
 ```
 
 The `run.yaml` file is baked into the container image.

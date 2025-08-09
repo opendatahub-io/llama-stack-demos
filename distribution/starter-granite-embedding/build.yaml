@@ -4,7 +4,6 @@ distribution_spec:
   providers:
     inference:
     - provider_type: remote::vllm
-    - provider_type: remote::openai
     - provider_type: inline::sentence-transformers
     vector_io:
     - provider_type: inline::milvus
@@ -13,7 +12,7 @@ distribution_spec:
     agents:
     - provider_type: inline::meta-reference
     eval:
-    - provider_type: remote::lmeval
+    - provider_type: inline::meta-reference
     datasetio:
     - provider_type: remote::huggingface
     - provider_type: inline::localfs
@@ -28,7 +27,10 @@ distribution_spec:
     - provider_type: remote::tavily-search
     - provider_type: inline::rag-runtime
     - provider_type: remote::model-context-protocol
+    - provider_type: remote::wolfram-alpha
   container_image: "registry.access.redhat.com/ubi9"
 image_type: container
 image_name: llama-stack-demos
-external_providers_dir: /.llama/providers.d
+additional_pip_packages:
+- sqlalchemy[asyncio]
+- sqlalchemy[asyncio]
