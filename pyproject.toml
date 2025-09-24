@@ -11,7 +11,7 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "streamlit>=1.44.1",
     "geocoder>=1.38.1",
-    "llama-stack==0.2.10",
+    "llama-stack==0.2.20",
     "scipy>=1.15.2",
     "matplotlib>=3.10.3",
 ]
