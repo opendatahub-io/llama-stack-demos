@@ -4,3 +4,5 @@ metadata:
   name: llama-serve
   annotations:
     argocd.argoproj.io/sync-wave: "0"
+    labels:
+      modelmesh-enabled: 'false'
