@@ -2,7 +2,7 @@
 
 This document is a quick walkthrough of how to deploy the slack MCP server on OCP from:
 
-* https://github.com/modelcontextprotocol/servers/
+* https://github.com/modelcontextprotocol/servers-archived/
 
 ## Supported Slack Tools
 

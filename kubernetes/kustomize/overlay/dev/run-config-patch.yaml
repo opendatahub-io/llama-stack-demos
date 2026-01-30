@@ -26,4 +26,4 @@ data:
     - toolgroup_id: mcp::github
       provider_id: model-context-protocol
       mcp_endpoint:
-        uri: "http://github-mcp-server-with-rh-nodejs:8000/sse"
+        uri: "http://github-mcp-server:8000/sse"

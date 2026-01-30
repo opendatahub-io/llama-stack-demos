@@ -1,6 +1,6 @@
 # Deploy GitHub MCP Server on OpenShift Container Platform
 
-This document provides instructions for deploying the GitHub MCP server on the OpenShift Container Platform. You can find the official GitHub MCP server repository here: [GitHub MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/github).
+This document provides instructions for deploying the GitHub MCP server on the OpenShift Container Platform. You can find the official GitHub MCP server repository here: [GitHub MCP Server](https://github.com/modelcontextprotocol-archived/servers-archived/tree/main/src/github).
 
 Additionally, this guide includes steps to test the integration of the GitHub MCP server with the Llama Stack agent.
 
@@ -64,7 +64,7 @@ podman push quay.io/<username>/github-mcp-server:latest
        1. Change the project name and MCP server name to your desired values.
             Example:
             - Project name: `llama-serve`
-            - MCP server name: `github-mcp-server-with-rh-nodejs`
+            - MCP server name: `github-mcp-server`
        2. Since the deployment uses community MCP servers published on GitHub, create a `secret.yaml` file to store your personal GitHub token for accessing the MCP server Docker image.
 
           > **Note:** Create a Personal Access Token in GitHub by navigating to **Settings > Developer settings > Personal access tokens**, assigning required scopes, and copying it securely into `secret.yaml`. Do not share it publicly.
@@ -108,7 +108,7 @@ podman push quay.io/<username>/github-mcp-server:latest
 
      - Example user prompt:
        ```
-       Describe https://github.com/modelcontextprotocol/servers/tree/main/src/github repository
+       Describe https://github.com/modelcontextprotocol-archived/servers-archived/tree/main/src/github repository
        ```
 
 2. Verify the output:
