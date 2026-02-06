@@ -52,7 +52,7 @@ def serve() -> None:
 
 
 def _get_toolgroup_provider(client: LlamaStackClient, provider_id: str | None):
-    providers = [p for p in client.providers.list() if p.api in ("tool_runtime")]
+    providers = [p for p in client.providers.list() if p.api == "tool_runtime"]
     if not providers:
         print(colored("No toolgroup providers found. Skipping registration.", "yellow"))
         return None
@@ -83,6 +83,7 @@ def run(
     """
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
     provider = _get_toolgroup_provider(client, provider_id)
+    registered = False
     if provider is not None:
         # Register the MCP server as a toolgroup with the Llama Stack server.
         client.toolgroups.register(
@@ -91,6 +92,7 @@ def run(
             mcp_endpoint={"uri": mcp_endpoint},
         )
         print(f"Registered toolgroup '{toolgroup_id}' -> {mcp_endpoint}")
+        registered = True
     else:
         print("Continuing without server-side toolgroup registration.")
 
@@ -119,8 +121,9 @@ def run(
     print(f"{tool_name}({a}, {b}) -> {result}")
 
     # Unregister the MCP toolgroup from the Llama Stack server.
-    client.toolgroups.unregister(toolgroup_id=toolgroup_id)
-    print(f"Unregistered toolgroup '{toolgroup_id}'")
+    if registered:
+        client.toolgroups.unregister(toolgroup_id=toolgroup_id)
+        print(f"Unregistered toolgroup '{toolgroup_id}'")
 
 
 if __name__ == "__main__":

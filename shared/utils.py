@@ -33,12 +33,12 @@ def _get_model_id(model) -> str | None:
     return None
 
 
-def check_model_is_available(client: LlamaStackClient, model: str):
+def check_model_is_available(client: LlamaStackClient, model: str) -> bool:
     available_models = [
         model_id
-        for model in client.models.list()
-        for model_id in [_get_model_id(model)]
-        if model_id and _is_llm_model(model) and "guard" not in model_id
+        for m in client.models.list()
+        for model_id in [_get_model_id(m)]
+        if model_id and _is_llm_model(m) and "guard" not in model_id
     ]
 
     if model not in available_models:
@@ -56,9 +56,9 @@ def check_model_is_available(client: LlamaStackClient, model: str):
 def get_any_available_model(client: LlamaStackClient):
     available_models = [
         model_id
-        for model in client.models.list()
-        for model_id in [_get_model_id(model)]
-        if model_id and _is_llm_model(model) and "guard" not in model_id
+        for m in client.models.list()
+        for model_id in [_get_model_id(m)]
+        if model_id and _is_llm_model(m) and "guard" not in model_id
     ]
     if not available_models:
         print(colored("No available models.", "red"))
@@ -83,9 +83,9 @@ def can_model_chat(client: LlamaStackClient, model_id: str) -> bool:
 def get_any_available_chat_model(client: LlamaStackClient):
     available_models = [
         model_id
-        for model in client.models.list()
-        for model_id in [_get_model_id(model)]
-        if model_id and _is_llm_model(model) and "guard" not in model_id
+        for m in client.models.list()
+        for model_id in [_get_model_id(m)]
+        if model_id and _is_llm_model(m) and "guard" not in model_id
     ]
     if not available_models:
         print(colored("No available models.", "red"))
@@ -102,11 +102,11 @@ def get_any_available_chat_model(client: LlamaStackClient):
 def get_any_available_embedding_model(client: LlamaStackClient) -> str | None:
     embedding_models = [
         model_id
-        for model in client.models.list()
-        for model_id in [_get_model_id(model)]
+        for m in client.models.list()
+        for model_id in [_get_model_id(m)]
         if model_id
         and (
-            _get_model_type(model) == "embedding"
+            _get_model_type(m) == "embedding"
             or "embedding" in model_id.lower()
             or "embed" in model_id.lower()
         )

@@ -24,13 +24,13 @@ import os
 import fire
 from termcolor import colored
 
-from examples.client_tools.ticker_data import get_ticker_data
-from examples.client_tools.web_search import WebSearchTool
-from examples.client_tools.calculator import calculator
+from client_tools.ticker_data import get_ticker_data
+from client_tools.web_search import WebSearchTool
+from client_tools.calculator import calculator
 
 from llama_stack_client import LlamaStackClient, Agent, AgentEventLogger
 
-from examples.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
+from shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
 
 def main(
