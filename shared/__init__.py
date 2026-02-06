@@ -1,0 +1,3 @@
+"""
+Shared utilities for examples.
+"""
