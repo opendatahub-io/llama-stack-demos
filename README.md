@@ -42,6 +42,10 @@ We use `uv` for managing Python dependencies, ensuring a consistent and efficien
     ```bash
     source .venv/bin/activate
     ```
+4.  (macOS only) Install SSL certificates to avoid certificate verification errors (adjust the Python version in the path to match your installed version):
+    ```bash
+    /Applications/Python\ 3.12/Install\ Certificates.command
+    ```
 
 Now you're all set to run any Python scripts or Jupyter notebooks within the `demos/rag_agentic` directory!
 

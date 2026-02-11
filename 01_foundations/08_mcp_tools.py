@@ -60,6 +60,9 @@ def _get_toolgroup_provider(client: LlamaStackClient, provider_id: str | None):
         for provider in providers:
             if provider.provider_id == "model-context-protocol":
                 return provider
+        available = [p.provider_id for p in providers]
+        print(colored(f"Default MCP provider 'model-context-protocol' not found. Available: {available}", "yellow"))
+        return None
     for provider in providers:
         if provider.provider_id == provider_id:
             return provider
@@ -96,34 +99,35 @@ def run(
     else:
         print("Continuing without server-side toolgroup registration.")
 
-    # List tools exposed by the MCP server.
-    tools = client.tool_runtime.list_tools(mcp_endpoint={"uri": mcp_endpoint})
-    tool_names = [tool.name for tool in tools]
-    print(f"Available MCP tools: {tool_names}")
+    try:
+        # List tools exposed by the MCP server.
+        tools = client.tool_runtime.list_tools(mcp_endpoint={"uri": mcp_endpoint})
+        tool_names = [tool.name for tool in tools]
+        print(f"Available MCP tools: {tool_names}")
 
-    if tool_name not in tool_names:
-        print(colored(f"Tool '{tool_name}' not found in MCP tools.", "red"))
-        print(
-            colored(
-                "Hint: your Llama Stack server may be ignoring the MCP endpoint and returning its own tools. "
-                "Ensure the server is configured with an MCP-capable toolgroup provider, "
-                "or point to a server that supports remote MCP endpoints.",
-                "yellow",
+        if tool_name not in tool_names:
+            print(colored(f"Tool '{tool_name}' not found in MCP tools.", "red"))
+            print(
+                colored(
+                    "Hint: your Llama Stack server may be ignoring the MCP endpoint and returning its own tools. "
+                    "Ensure the server is configured with an MCP-capable toolgroup provider, "
+                    "or point to a server that supports remote MCP endpoints.",
+                    "yellow",
+                )
             )
+            return
+
+        # Invoke the MCP tool through the server-side runtime.
+        result = client.tool_runtime.invoke_tool(
+            tool_name=tool_name,
+            kwargs={"a": a, "b": b},
         )
-        return
-
-    # Invoke the MCP tool through the server-side runtime.
-    result = client.tool_runtime.invoke_tool(
-        tool_name=tool_name,
-        kwargs={"a": a, "b": b},
-    )
-    print(f"{tool_name}({a}, {b}) -> {result}")
-
-    # Unregister the MCP toolgroup from the Llama Stack server.
-    if registered:
-        client.toolgroups.unregister(toolgroup_id=toolgroup_id)
-        print(f"Unregistered toolgroup '{toolgroup_id}'")
+        print(f"{tool_name}({a}, {b}) -> {result}")
+    finally:
+        # Unregister the MCP toolgroup from the Llama Stack server.
+        if registered:
+            client.toolgroups.unregister(toolgroup_id=toolgroup_id)
+            print(f"Unregistered toolgroup '{toolgroup_id}'")
 
 
 if __name__ == "__main__":

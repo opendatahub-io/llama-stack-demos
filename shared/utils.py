@@ -1,8 +1,11 @@
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 from llama_stack_client import LlamaStackClient
 from termcolor import colored
+
+_ALLOWED_SCHEMES = {"http", "https"}
 
 
 def _get_model_type(model) -> str | None:
@@ -133,19 +136,19 @@ def get_embedding_dimension(client: LlamaStackClient, model_id: str) -> int | No
 def download_documents(urls: list[str], target_dir: Path) -> list[Path]:
     local_paths: list[Path] = []
     for url in urls:
+        parsed = urlparse(url)
+        if parsed.scheme not in _ALLOWED_SCHEMES:
+            print(colored(f"Skipping URL with disallowed scheme: {url}", "red"))
+            continue
         filename = url.rsplit("/", 1)[-1]
         target_path = target_dir / filename
         try:
-            with urlopen(url) as response:
+            with urlopen(url, timeout=30) as response:
                 content_bytes = response.read()
         except Exception as exc:
             print(colored(f"Failed to download {url}: {exc}", "red"))
             continue
-        try:
-            content_text = content_bytes.decode("utf-8", errors="ignore").strip()
-        except Exception as exc:
-            print(colored(f"Failed to decode {url}: {exc}", "red"))
-            continue
+        content_text = content_bytes.decode("utf-8", errors="ignore").strip()
         if not content_text:
             print(colored(f"Downloaded empty content from {url}", "red"))
             continue
@@ -165,5 +168,7 @@ def build_context(search_results) -> str:
         ).strip()
         if not snippet:
             continue
-        context_lines.append(f"- {result.filename} (score={result.score:.2f}): {snippet}")
+        score = result.score if result.score is not None else 0.0
+        fname = getattr(result, "filename", "unknown") or "unknown"
+        context_lines.append(f"- {fname} (score={score:.2f}): {snippet}")
     return "\n".join(context_lines)

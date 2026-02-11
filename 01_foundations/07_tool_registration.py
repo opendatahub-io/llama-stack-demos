@@ -77,8 +77,9 @@ def main(
     tools = [
         calculator,
         get_ticker_data,
-        WebSearchTool(engine, api_key),
     ]
+    if api_key:
+        tools.append(WebSearchTool(engine, api_key))
     agent = Agent(
         client,
         model=model_id,
@@ -97,7 +98,7 @@ def main(
         try:
             tool_list = client.tools.list()
             print("Server-side tools:")
-            for tool_def in tool_list.data:
+            for tool_def in tool_list:
                 print(f"- {tool_def.name}")
         except Exception as exc:
             print(colored(f"Failed to list server tools: {exc}", "yellow"))

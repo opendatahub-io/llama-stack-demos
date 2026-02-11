@@ -96,6 +96,7 @@ def _collect_local_files(file_dir: str) -> list[Path]:
     files = [p for p in path.rglob("*") if p.is_file()]
     if not files:
         print(colored(f"No files found under: {file_dir}", "red"))
+        return []
     print(f"Found {len(files)} files under: {file_dir}")
     return files
 

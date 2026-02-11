@@ -20,8 +20,6 @@ Learning Objectives:
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 
 import fire
 from llama_stack_client import LlamaStackClient
@@ -87,13 +85,13 @@ def main(
     ]
 
     if stream:
-        stream = client.chat.completions.create(
+        response_stream = client.chat.completions.create(
             model=resolved_model,
             messages=messages,
             stream=True,
         )
-        _print_stream(stream)
-        stream.close()
+        _print_stream(response_stream)
+        response_stream.close()
         return
 
     completion = client.chat.completions.create(
