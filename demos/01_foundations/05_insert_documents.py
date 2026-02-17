@@ -28,7 +28,7 @@ import fire
 from llama_stack_client import LlamaStackClient
 from termcolor import colored
 
-from shared.utils import (
+from demos.shared.utils import (
     download_documents,
     get_any_available_embedding_model,
     get_embedding_dimension,

@@ -1,14 +1,14 @@
 """
-Demo: Conversation Turns
+Demo: Streaming Responses
 
 Description:
-This demo teaches how to manage multi-turn conversations using the Responses API with conversation context.
+This demo teaches how to use streaming responses for real-time text generation in multi-turn conversations.
 
 Learning Objectives:
-- Create and manage conversation sessions
-- Maintain conversation context across multiple turns
-- Use conversation IDs to track dialogue history
-- Build coherent multi-turn interactions with the model
+- Enable streaming mode in the Responses API
+- Process response events and deltas in real-time
+- Handle different event types during streaming
+- Provide real-time feedback to users during text generation
 """
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -25,7 +25,7 @@ import fire
 from llama_stack_client import LlamaStackClient
 from termcolor import colored
 
-from shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
+from demos.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
 try:
     from dotenv import load_dotenv
@@ -47,6 +47,22 @@ def _resolve_model(client: LlamaStackClient, model_id: str | None) -> str | None
     return resolved_model
 
 
+def _print_stream(stream) -> None:
+    needs_newline = False
+    for event in stream:
+        event_type = getattr(event, "type", None)
+        if event_type == "response.output_text.delta":
+            delta = getattr(event, "delta", None)
+            if delta:
+                print(delta, end="", flush=True)
+                needs_newline = True
+        elif event_type == "response.completed":
+            print()
+            needs_newline = False
+    if needs_newline:
+        print()
+
+
 def main(
     host: str,
     port: int,
@@ -60,6 +76,7 @@ def main(
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
     resolved_model = _resolve_model(client, model_id)
     if resolved_model is None:
+        print(colored("No chat-capable model available.", "red"))
         return
     print(f"Using model: {resolved_model}")
     if not can_model_chat(client, resolved_model):
@@ -89,9 +106,9 @@ def main(
             conversation=conversation_id,
             instructions=instructions,
             input=[{"role": "user", "content": prompt}],
-            stream=False,
+            stream=True,
         )
-        print(response.output_text)
+        _print_stream(response)
 
 
 if __name__ == "__main__":

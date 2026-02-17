@@ -47,7 +47,18 @@ We use `uv` for managing Python dependencies, ensuring a consistent and efficien
     /Applications/Python\ 3.12/Install\ Certificates.command
     ```
 
-Now you're all set to run any Python scripts or Jupyter notebooks within the `demos/rag_agentic` directory!
+Now you're all set to run any Python scripts or Jupyter notebooks!
+
+## 📚 Available Demos
+
+### Foundations (`demos/01_foundations/`)
+Learn the fundamental building blocks of Llama Stack, including client setup, chat completions, vector databases, and tool integration. [Read more](./demos/01_foundations/README.md)
+
+### Responses Basics (`demos/02_responses_basics/`)
+Master the Responses API for agent-like workflows with instructions, tools, and structured outputs. [Read more](./demos/02_responses_basics/README.md)
+
+### RAG & Agentic Demo (`demos/rag_agentic/`)
+A complete RAG-based Q&A system with web interface. [Read more](./demos/rag_agentic/README.md)
 
 ## 💡 Demo Architecture
 The below diagram is an example architecture for a secure Llama Stack based application deployed on OpenShift (OCP) using both MCP tools and a [Milvus](https://milvus.io/) vectorDB for its agentic and RAG based workflows. This is the same architecture that has been implemented in the [RAG/Agentic](./demos/rag_agentic/) demos.
