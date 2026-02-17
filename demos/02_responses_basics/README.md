@@ -22,7 +22,7 @@ This folder teaches the fundamentals of the Responses API, which provides a high
 
 **Run**:
 ```bash
-python -m 02_responses_basics.01_simple_response localhost 8321 --prompt "Hello"
+python -m demos.02_responses_basics.01_simple_response localhost 8321 --prompt "Hello"
 ```
 
 ### Demo 2: Tool Calling
@@ -34,7 +34,7 @@ python -m 02_responses_basics.01_simple_response localhost 8321 --prompt "Hello"
 
 **Run**:
 ```bash
-python -m 02_responses_basics.02_tool_calling localhost 8321 --prompt "Search the web for who was the 42nd president of the United States and answer with the name only."
+python -m demos.02_responses_basics.02_tool_calling localhost 8321 --prompt "Search the web for who was the 42nd president of the United States and answer with the name only."
 ```
 
 ### Demo 3: Conversation Turns
@@ -46,7 +46,7 @@ python -m 02_responses_basics.02_tool_calling localhost 8321 --prompt "Search th
 
 **Run**:
 ```bash
-python -m 02_responses_basics.03_conversation_turns localhost 8321
+python -m demos.02_responses_basics.03_conversation_turns localhost 8321
 ```
 
 ### Demo 4: Streaming Responses
@@ -58,7 +58,7 @@ python -m 02_responses_basics.03_conversation_turns localhost 8321
 
 **Run**:
 ```bash
-python -m 02_responses_basics.04_streaming_responses localhost 8321
+python -m demos.02_responses_basics.04_streaming_responses localhost 8321
 ```
 
 ### Demo 5: Response Formats
@@ -70,5 +70,5 @@ python -m 02_responses_basics.04_streaming_responses localhost 8321
 
 **Run**:
 ```bash
-python -m 02_responses_basics.05_response_formats localhost 8321
+python -m demos.02_responses_basics.05_response_formats localhost 8321
 ```

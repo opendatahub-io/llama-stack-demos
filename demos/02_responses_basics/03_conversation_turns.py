@@ -1,14 +1,14 @@
 """
-Demo: Tool Calling
+Demo: Conversation Turns
 
 Description:
-This demo teaches how to use built-in tools like web search with the Responses API to enhance model capabilities.
+This demo teaches how to manage multi-turn conversations using the Responses API with conversation context.
 
 Learning Objectives:
-- Enable tool calling in the Responses API
-- Use the web_search tool for retrieving real-time information
-- Control tool choice to ensure specific tools are used
-- Include tool execution metadata in responses
+- Create and manage conversation sessions
+- Maintain conversation context across multiple turns
+- Use conversation IDs to track dialogue history
+- Build coherent multi-turn interactions with the model
 """
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -25,7 +25,7 @@ import fire
 from llama_stack_client import LlamaStackClient
 from termcolor import colored
 
-from shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
+from demos.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
 try:
     from dotenv import load_dotenv
@@ -51,15 +51,13 @@ def main(
     host: str,
     port: int,
     model_id: str | None = None,
-    prompt: str = (
-        "Search the web for who was the 42nd president of the United States "
-        "and answer with the name only."
+    instructions: str = (
+        "You are a helpful assistant. Answer directly and avoid refusing unless safety requires it."
     ),
 ) -> None:
     _maybe_load_dotenv()
 
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
-
     resolved_model = _resolve_model(client, model_id)
     if resolved_model is None:
         return
@@ -73,15 +71,27 @@ def main(
         )
         return
 
-    response = client.responses.create(
-        model=resolved_model,
-        instructions="Use web_search and reply with a plain-text answer only.",
-        input=[{"role": "user", "content": prompt}],
-        tools=[{"type": "web_search"}],
-        tool_choice="auto",
-        stream=False,
-    )
-    print(response.output_text or response.output)
+    conversation = client.conversations.create(metadata={"name": "responses-demo"})
+    conversation_id = conversation.id
+    print(f"Created conversation={conversation_id}")
+
+    prompts = [
+        "We are discussing Llama Stack, a framework and server for running AI models and tools. "
+        "In one sentence, describe it.",
+        "Summarize the description in three short bullet points.",
+        "Give one concrete use case in a single sentence.",
+    ]
+
+    for prompt in prompts:
+        print(colored(f"User> {prompt}", "blue"))
+        response = client.responses.create(
+            model=resolved_model,
+            conversation=conversation_id,
+            instructions=instructions,
+            input=[{"role": "user", "content": prompt}],
+            stream=False,
+        )
+        print(response.output_text)
 
 
 if __name__ == "__main__":
