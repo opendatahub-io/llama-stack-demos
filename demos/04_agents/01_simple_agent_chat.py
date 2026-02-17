@@ -17,9 +17,8 @@ Learning Objectives:
 - Configure safety shields for input and output filtering
 """
 
-import os
-
 import inspect
+import os
 
 import fire
 from llama_stack_client import LlamaStackClient, Agent, AgentEventLogger

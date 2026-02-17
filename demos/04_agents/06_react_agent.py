@@ -21,19 +21,21 @@ import os
 import uuid
 
 import fire
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.lib.agents.event_logger import EventLogger
+from llama_stack_client import AgentEventLogger, LlamaStackClient
 from llama_stack_client.lib.agents.react.agent import ReActAgent
 from termcolor import colored
 
 from demos.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
 
-def torchtune(query: str = "torchtune"):
+def torchtune(query: str = "torchtune"):  # noqa: ARG001
     """
     Answer information about torchtune.
 
-    :param query: The query to use for querying the internet
+    Note: This is a demo tool that returns static information.
+    The query parameter is required by the tool interface but is not used.
+
+    :param query: Unused query parameter (required for tool signature)
     :returns: Information about torchtune
     """
     dummy_response = """
@@ -51,9 +53,19 @@ def torchtune(query: str = "torchtune"):
 
 
 def main(host: str, port: int, model_id: str | None = None):
+    tavily_api_key = os.getenv("TAVILY_SEARCH_API_KEY")
+    if not tavily_api_key:
+        print(
+            colored(
+                "Error: TAVILY_SEARCH_API_KEY environment variable is not set. This demo requires web search.",
+                "red",
+            )
+        )
+        return
+
     client = LlamaStackClient(
         base_url=f"http://{host}:{port}",
-        provider_data={"tavily_search_api_key": os.getenv("TAVILY_SEARCH_API_KEY")},
+        provider_data={"tavily_search_api_key": tavily_api_key},
     )
 
     if model_id is None:
@@ -98,7 +110,7 @@ def main(host: str, port: int, model_id: str | None = None):
         session_id=session_id,
         stream=True,
     )
-    for log in EventLogger().log(response):
+    for log in AgentEventLogger().log(response):
         print(log, end="", flush=True)
 
     user_prompt2 = "What are the popular llms supported in torchtune?"
@@ -108,7 +120,7 @@ def main(host: str, port: int, model_id: str | None = None):
         session_id=session_id,
         stream=True,
     )
-    for log in EventLogger().log(response2):
+    for log in AgentEventLogger().log(response2):
         print(log, end="", flush=True)
 
 

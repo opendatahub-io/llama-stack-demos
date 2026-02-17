@@ -172,3 +172,38 @@ def build_context(search_results) -> str:
         fname = getattr(result, "filename", "unknown") or "unknown"
         context_lines.append(f"- {fname} (score={score:.2f}): {snippet}")
     return "\n".join(context_lines)
+
+
+def _to_dict(value) -> dict | None:
+    """Convert an object to a dictionary if possible."""
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if hasattr(value, "dict"):
+        return value.dict()
+    return None
+
+
+def build_context_from_dicts(results: list) -> str:
+    """Build context from dictionary results (e.g., from API responses parsed to dicts)."""
+    if not results:
+        return ""
+    context_lines = ["Context from uploaded documents:"]
+    for result_dict in results:
+        if not isinstance(result_dict, dict):
+            result_dict = _to_dict(result_dict) or {}
+        content_list = result_dict.get("content") or []
+        snippet_parts = []
+        for chunk in content_list:
+            chunk_dict = _to_dict(chunk) or {}
+            text = chunk_dict.get("text")
+            if text:
+                snippet_parts.append(text.strip())
+        snippet = " ".join(snippet_parts).strip()
+        if not snippet:
+            continue
+        score = result_dict.get("score", 0.0)
+        fname = result_dict.get("filename", "unknown") or "unknown"
+        context_lines.append(f"- {fname} (score={score:.2f}): {snippet}")
+    return "\n".join(context_lines)

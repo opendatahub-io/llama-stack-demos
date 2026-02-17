@@ -37,7 +37,7 @@ from demos.shared.utils import (
 
 try:
     from dotenv import load_dotenv
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     load_dotenv = None
 
 
@@ -120,37 +120,51 @@ def main(
     provider_id = vector_providers[0].provider_id
 
     # Create two vector stores to simulate multiple sources.
-    store_a = _create_vector_store(client, provider_id, embedding_model, embedding_dimension)
-    store_b = _create_vector_store(client, provider_id, embedding_model, embedding_dimension)
+    store_a = None
+    store_b = None
+    try:
+        store_a = _create_vector_store(client, provider_id, embedding_model, embedding_dimension)
+        store_b = _create_vector_store(client, provider_id, embedding_model, embedding_dimension)
 
-    # Attach different content to each store.
-    _attach_text(
-        client,
-        store_a.id,
-        "Llama Stack provides a unified API for models, tools, and vector stores.",
-        "doc_a.txt",
-    )
-    _attach_text(
-        client,
-        store_b.id,
-        "Llama Stack supports serving models and building agentic workflows.",
-        "doc_b.txt",
-    )
+        # Attach different content to each store.
+        _attach_text(
+            client,
+            store_a.id,
+            "Llama Stack provides a unified API for models, tools, and vector stores.",
+            "doc_a.txt",
+        )
+        _attach_text(
+            client,
+            store_b.id,
+            "Llama Stack supports serving models and building agentic workflows.",
+            "doc_b.txt",
+        )
 
-    # Query across both vector stores with file_search.
-    response = client.responses.create(
-        model=resolved_model,
-        instructions="Use file_search across all provided vector stores.",
-        input=[{"role": "user", "content": question}],
-        tools=[{"type": "file_search", "vector_store_ids": [store_a.id, store_b.id]}],
-        tool_choice={"type": "file_search"},
-        include=["file_search_call.results"],
-        stream=False,
-    )
+        # Query across both vector stores with file_search.
+        response = client.responses.create(
+            model=resolved_model,
+            instructions="Use file_search across all provided vector stores.",
+            input=[{"role": "user", "content": question}],
+            tools=[{"type": "file_search", "vector_store_ids": [store_a.id, store_b.id]}],
+            tool_choice={"type": "file_search"},
+            include=["file_search_call.results"],
+            stream=False,
+        )
 
-    print(f"[context] question: {question}")
-    print(f"[context] stores: {store_a.id}, {store_b.id}")
-    print(f"[response] {response.output_text or response.output}")
+        print(f"[context] question: {question}")
+        print(f"[context] stores: {store_a.id}, {store_b.id}")
+        print(f"[response] {response.output_text or response.output}")
+    finally:
+        if store_a is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=store_a.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete vector store A: {e}", "yellow"))
+        if store_b is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=store_b.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete vector store B: {e}", "yellow"))
 
 
 if __name__ == "__main__":

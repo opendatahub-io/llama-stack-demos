@@ -64,17 +64,17 @@ def main(host: str, port: int, model_id: str | None = None):
             )
             return
 
+    tools = [calculator, get_ticker_data]
+    if api_key:
+        # Note: While you can also use "builtin::websearch" as a tool,
+        # this example shows how to use a client side custom web search tool.
+        tools.append(WebSearchTool(engine, api_key))
+
     agent = Agent(
         client,
         model=model_id,
         instructions="You are a helpful assistant. Use the tools you have access to for providing relevant answers.",
-        tools=[
-            calculator,
-            get_ticker_data,
-            # Note: While you can also use "builtin::websearch" as a tool,
-            # this example shows how to use a client side custom web search tool.
-            WebSearchTool(engine, api_key),
-        ],
+        tools=tools,
     )
 
     session_id = agent.create_session("test-session")

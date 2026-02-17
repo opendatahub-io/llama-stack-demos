@@ -72,14 +72,14 @@ def main(
         print(colored("Unable to determine embedding dimension.", "red"))
         return
 
-    vector_store = client.vector_stores.create(
-        name="chat-with-documents",
-        extra_body={"embedding_model": embedding_model, "embedding_dimension": embedding_dimension},
-    )
-
+    vector_store = None
     file_ids: list[str] = []
     attached_file_ids: list[str] = []
     try:
+        vector_store = client.vector_stores.create(
+            name="chat-with-documents",
+            extra_body={"embedding_model": embedding_model, "embedding_dimension": embedding_dimension},
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
             doc_paths = download_documents(urls, Path(tmpdir))
             if not doc_paths:
@@ -164,15 +164,16 @@ def main(
             )
             print(response.output_text)
     finally:
-        try:
-            client.vector_stores.delete(vector_store_id=vector_store.id)
-        except Exception:
-            pass
+        if vector_store is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=vector_store.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete vector store: {e}", "yellow"))
         for file_id in file_ids:
             try:
                 client.files.delete(file_id=file_id)
-            except Exception:
-                pass
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete file {file_id}: {e}", "yellow"))
 
 
 if __name__ == "__main__":

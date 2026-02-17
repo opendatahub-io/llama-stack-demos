@@ -108,71 +108,94 @@ def main(
     provider_id = vector_providers[0].provider_id
 
     # Create two vector stores with the same document but different chunk sizes.
-    store_small = client.vector_stores.create(
-        name=f"chunk_small_{uuid4()}",
-        extra_body={
-            "provider_id": provider_id,
-            "embedding_model": embedding_model,
-            "embedding_dimension": embedding_dimension,
-        },
-    )
-    store_large = client.vector_stores.create(
-        name=f"chunk_large_{uuid4()}",
-        extra_body={
-            "provider_id": provider_id,
-            "embedding_model": embedding_model,
-            "embedding_dimension": embedding_dimension,
-        },
-    )
+    store_small = None
+    store_large = None
+    try:
+        store_small = client.vector_stores.create(
+            name=f"chunk_small_{uuid4()}",
+            extra_body={
+                "provider_id": provider_id,
+                "embedding_model": embedding_model,
+                "embedding_dimension": embedding_dimension,
+            },
+        )
+        store_large = client.vector_stores.create(
+            name=f"chunk_large_{uuid4()}",
+            extra_body={
+                "provider_id": provider_id,
+                "embedding_model": embedding_model,
+                "embedding_dimension": embedding_dimension,
+            },
+        )
 
-    # Same document content for both stores to isolate chunking differences.
-    doc_text = (
-        "Llama Stack provides a unified API for models, tools, and vector stores. "
-        "It supports serving, evaluation, and agentic workflows. "
-        "You can build RAG systems and multi-tool agents with it."
-    )
+        # Same document content for both stores to isolate chunking differences.
+        # Using a longer document to make chunking differences more apparent.
+        doc_text = (
+            "Llama Stack provides a unified API for models, tools, and vector stores. "
+            "It supports serving, evaluation, and agentic workflows. "
+            "You can build RAG systems and multi-tool agents with it. "
+            "The framework enables developers to create sophisticated AI applications "
+            "by combining language models with external tools and knowledge bases. "
+            "Vector stores allow efficient semantic search over large document collections, "
+            "while the tool integration system lets agents interact with external services. "
+            "RAG (Retrieval-Augmented Generation) systems can ground model responses in factual data. "
+            "The unified API design makes it easy to switch between different model providers "
+            "and deployment configurations without changing application code. "
+            "Agentic workflows enable autonomous task completion through iterative reasoning and tool use."
+        )
 
-    _attach_with_chunking(
-        client,
-        store_small.id,
-        doc_text,
-        "chunk_small.txt",
-        {"type": "static", "static": {"max_chunk_size_tokens": 128, "chunk_overlap_tokens": 16}},
-    )
-    _attach_with_chunking(
-        client,
-        store_large.id,
-        doc_text,
-        "chunk_large.txt",
-        {"type": "static", "static": {"max_chunk_size_tokens": 512, "chunk_overlap_tokens": 64}},
-    )
+        _attach_with_chunking(
+            client,
+            store_small.id,
+            doc_text,
+            "chunk_small.txt",
+            {"type": "static", "static": {"max_chunk_size_tokens": 128, "chunk_overlap_tokens": 16}},
+        )
+        _attach_with_chunking(
+            client,
+            store_large.id,
+            doc_text,
+            "chunk_large.txt",
+            {"type": "static", "static": {"max_chunk_size_tokens": 512, "chunk_overlap_tokens": 64}},
+        )
 
-    # Query the store with smaller chunks.
-    response_small = client.responses.create(
-        model=resolved_model,
-        instructions="Use file_search and answer briefly.",
-        input=[{"role": "user", "content": question}],
-        tools=[{"type": "file_search", "vector_store_ids": [store_small.id]}],
-        tool_choice={"type": "file_search"},
-        include=["file_search_call.results"],
-        stream=False,
-    )
-    # Query the store with larger chunks.
-    response_large = client.responses.create(
-        model=resolved_model,
-        instructions="Use file_search and answer briefly.",
-        input=[{"role": "user", "content": question}],
-        tools=[{"type": "file_search", "vector_store_ids": [store_large.id]}],
-        tool_choice={"type": "file_search"},
-        include=["file_search_call.results"],
-        stream=False,
-    )
+        # Query the store with smaller chunks.
+        response_small = client.responses.create(
+            model=resolved_model,
+            instructions="Use file_search and answer briefly.",
+            input=[{"role": "user", "content": question}],
+            tools=[{"type": "file_search", "vector_store_ids": [store_small.id]}],
+            tool_choice={"type": "file_search"},
+            include=["file_search_call.results"],
+            stream=False,
+        )
+        # Query the store with larger chunks.
+        response_large = client.responses.create(
+            model=resolved_model,
+            instructions="Use file_search and answer briefly.",
+            input=[{"role": "user", "content": question}],
+            tools=[{"type": "file_search", "vector_store_ids": [store_large.id]}],
+            tool_choice={"type": "file_search"},
+            include=["file_search_call.results"],
+            stream=False,
+        )
 
-    print(f"[context] question: {question}")
-    print(f"[small chunks] store={store_small.id}")
-    print(f"[small chunks] response: {response_small.output_text or response_small.output}")
-    print(f"[large chunks] store={store_large.id}")
-    print(f"[large chunks] response: {response_large.output_text or response_large.output}")
+        print(f"[context] question: {question}")
+        print(f"[small chunks] store={store_small.id}")
+        print(f"[small chunks] response: {response_small.output_text or response_small.output}")
+        print(f"[large chunks] store={store_large.id}")
+        print(f"[large chunks] response: {response_large.output_text or response_large.output}")
+    finally:
+        if store_small is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=store_small.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete small chunks vector store: {e}", "yellow"))
+        if store_large is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=store_large.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete large chunks vector store: {e}", "yellow"))
 
 
 if __name__ == "__main__":

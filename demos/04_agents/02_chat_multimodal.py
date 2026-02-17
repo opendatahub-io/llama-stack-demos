@@ -70,6 +70,10 @@ def main(host: str, port: int, model_id: str | None = None):
         THIS_DIR / "resources" / "dog.png",
         THIS_DIR / "resources" / "pasta.jpeg",
     ]
+    for file in files:
+        if not file.exists():
+            print(colored(f"Error: Required resource file not found: {file}", "red"))
+            return
     image_urls = [_data_url_from_image(file) for file in files]
 
     prompts = [

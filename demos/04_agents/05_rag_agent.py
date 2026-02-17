@@ -93,63 +93,82 @@ def main(
     selected_vector_provider = vector_providers[0]
 
     # Create a vector store
-    vector_store = client.vector_stores.create(
-        name=f"test_vector_store_{uuid4()}",
-        extra_body={
-            "provider_id": selected_vector_provider.provider_id,
-            "embedding_model": embedding_model,
-            "embedding_dimension": embedding_dimension,
-        },
-    )
-
-    # Upload and attach documents to the vector store
-    start_time = time.time()
-    for i, url in enumerate(document_urls):
-        with urlopen(url) as response:
-            file_buffer = BytesIO(response.read())
-        filename = urlparse(url).path.rsplit("/", 1)[-1] or f"document-{i}.txt"
-        file_buffer.name = filename
-        uploaded_file = client.files.create(file=file_buffer, purpose="assistants")
-        client.vector_stores.files.create(
-            vector_store_id=vector_store.id,
-            file_id=uploaded_file.id,
-            attributes={"document_id": f"num-{i}", "source": url},
-            chunking_strategy={
-                "type": "static",
-                "static": {"max_chunk_size_tokens": 512, "chunk_overlap_tokens": 128},
+    vector_store = None
+    file_ids = []
+    try:
+        vector_store = client.vector_stores.create(
+            name=f"test_vector_store_{uuid4()}",
+            extra_body={
+                "provider_id": selected_vector_provider.provider_id,
+                "embedding_model": embedding_model,
+                "embedding_dimension": embedding_dimension,
             },
         )
-    end_time = time.time()
-    print(colored(f"Inserted documents in {end_time - start_time:.2f}s", "cyan"))
 
-    agent = Agent(
-        client,
-        model=model_id,
-        instructions="You are a helpful assistant. Use file_search tool to gather information needed to answer questions. Answer succintly.",
-        tools=[
-            {
-                "type": "file_search",
-                "vector_store_ids": [vector_store.id],
-            }
-        ],
-    )
-    session_id = agent.create_session("test-session")
-    print(f"Created session_id={session_id}")
+        # Upload and attach documents to the vector store
+        start_time = time.time()
+        for i, url in enumerate(document_urls):
+            try:
+                with urlopen(url, timeout=30) as response:
+                    file_buffer = BytesIO(response.read())
+            except Exception as e:
+                print(colored(f"Failed to download {url}: {e}", "red"))
+                continue
+            filename = urlparse(url).path.rsplit("/", 1)[-1] or f"document-{i}.txt"
+            file_buffer.name = filename
+            uploaded_file = client.files.create(file=file_buffer, purpose="assistants")
+            file_ids.append(uploaded_file.id)
+            client.vector_stores.files.create(
+                vector_store_id=vector_store.id,
+                file_id=uploaded_file.id,
+                attributes={"document_id": f"num-{i}", "source": url},
+                chunking_strategy={
+                    "type": "static",
+                    "static": {"max_chunk_size_tokens": 512, "chunk_overlap_tokens": 128},
+                },
+            )
+        end_time = time.time()
+        print(colored(f"Inserted documents in {end_time - start_time:.2f}s", "cyan"))
 
-    user_prompts = [
-        "Is anything related to 'Llama3' mentioned, if so what?",
-        "Tell me how to use LoRA",
-        "What about Quantization?",
-    ]
-
-    for prompt in user_prompts:
-        response = agent.create_turn(
-            messages=[{"role": "user", "content": prompt}],
-            session_id=session_id,
+        agent = Agent(
+            client,
+            model=model_id,
+            instructions="You are a helpful assistant. Use file_search tool to gather information needed to answer questions. Answer succinctly.",
+            tools=[
+                {
+                    "type": "file_search",
+                    "vector_store_ids": [vector_store.id],
+                }
+            ],
         )
-        print(colored(f"User> {prompt}", "blue"))
-        for printable in AgentEventLogger().log(response):
-            print(printable, end="", flush=True)
+        session_id = agent.create_session("test-session")
+        print(f"Created session_id={session_id}")
+
+        user_prompts = [
+            "Is anything related to 'Llama3' mentioned, if so what?",
+            "Tell me how to use LoRA",
+            "What about Quantization?",
+        ]
+
+        for prompt in user_prompts:
+            response = agent.create_turn(
+                messages=[{"role": "user", "content": prompt}],
+                session_id=session_id,
+            )
+            print(colored(f"User> {prompt}", "blue"))
+            for printable in AgentEventLogger().log(response):
+                print(printable, end="", flush=True)
+    finally:
+        if vector_store is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=vector_store.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete vector store: {e}", "yellow"))
+        for file_id in file_ids:
+            try:
+                client.files.delete(file_id=file_id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete file {file_id}: {e}", "yellow"))
 
 
 if __name__ == "__main__":

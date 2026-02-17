@@ -51,6 +51,15 @@ def _resolve_web_tool():
 
 
 def _route_subtask(prompt: str, web_available: bool) -> str:
+    """
+    Route a subtask to the appropriate specialized agent.
+
+    Note: This uses simplistic keyword-based routing for demonstration purposes.
+    Production systems should use more sophisticated routing logic, such as:
+    - Embedding-based semantic matching
+    - LLM-based task classification
+    - Multi-turn dialog to clarify ambiguous requests
+    """
     lower_prompt = prompt.lower()
     if any(token in lower_prompt for token in ["update", "recent", "release", "news", "search", "find"]):
         return "research" if web_available else "general"
@@ -70,7 +79,11 @@ def _route_subtask(prompt: str, web_available: bool) -> str:
 def _extract_output(response) -> str:
     if isinstance(response, tuple):
         response = response[0]
-    return response.output_text or str(response.output)
+    output_text = getattr(response, "output_text", None)
+    if output_text:
+        return output_text
+    output = getattr(response, "output", None)
+    return str(output) if output is not None else ""
 
 
 def main(host: str, port: int, model_id: str | None = None):
@@ -101,12 +114,6 @@ def main(host: str, port: int, model_id: str | None = None):
             model=model_id,
             instructions="You are a helpful assistant.",
         ),
-        "research": Agent(
-            client,
-            model=model_id,
-            instructions="You are a research assistant. Use web search when helpful.",
-            tools=[web_tool] if web_tool is not None else [],
-        ),
         "math": Agent(
             client,
             model=model_id,
@@ -120,6 +127,16 @@ def main(host: str, port: int, model_id: str | None = None):
             tools=[get_ticker_data],
         ),
     }
+
+    # Only create research agent if web search is available
+    if web_available:
+        agents["research"] = Agent(
+            client,
+            model=model_id,
+            instructions="You are a research assistant. Use web search when helpful.",
+            tools=[web_tool],
+        )
+
     sessions = {name: agent.create_session(f"coordination-{name}") for name, agent in agents.items()}
 
     task = (

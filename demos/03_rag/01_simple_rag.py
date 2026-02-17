@@ -91,39 +91,53 @@ def main(
         return
     selected_vector_provider = vector_providers[0]
 
-    vector_store = client.vector_stores.create(
-        name=f"simple_rag_{uuid4()}",
-        extra_body={
-            "provider_id": selected_vector_provider.provider_id,
-            "embedding_model": embedding_model,
-            "embedding_dimension": embedding_dimension,
-        },
-    )
+    vector_store = None
+    uploaded_file = None
+    try:
+        vector_store = client.vector_stores.create(
+            name=f"simple_rag_{uuid4()}",
+            extra_body={
+                "provider_id": selected_vector_provider.provider_id,
+                "embedding_model": embedding_model,
+                "embedding_dimension": embedding_dimension,
+            },
+        )
 
-    file_buffer = BytesIO(doc_text.encode("utf-8"))
-    file_buffer.name = "rag_doc.txt"
-    uploaded_file = client.files.create(file=file_buffer, purpose="assistants")
-    client.vector_stores.files.create(
-        vector_store_id=vector_store.id,
-        file_id=uploaded_file.id,
-        chunking_strategy={
-            "type": "static",
-            "static": {"max_chunk_size_tokens": 256, "chunk_overlap_tokens": 32},
-        },
-    )
+        file_buffer = BytesIO(doc_text.encode("utf-8"))
+        file_buffer.name = "rag_doc.txt"
+        uploaded_file = client.files.create(file=file_buffer, purpose="assistants")
+        client.vector_stores.files.create(
+            vector_store_id=vector_store.id,
+            file_id=uploaded_file.id,
+            chunking_strategy={
+                "type": "static",
+                "static": {"max_chunk_size_tokens": 256, "chunk_overlap_tokens": 32},
+            },
+        )
 
-    response = client.responses.create(
-        model=resolved_model,
-        instructions="Use file_search to answer the question using the provided documents.",
-        input=[{"role": "user", "content": question}],
-        tools=[{"type": "file_search", "vector_store_ids": [vector_store.id]}],
-        tool_choice={"type": "file_search"},
-        include=["file_search_call.results"],
-        stream=False,
-    )
-    print(f"[context] document: {doc_text}")
-    print(f"[context] question: {question}")
-    print(f"[response] {response.output_text or response.output}")
+        response = client.responses.create(
+            model=resolved_model,
+            instructions="Use file_search to answer the question using the provided documents.",
+            input=[{"role": "user", "content": question}],
+            tools=[{"type": "file_search", "vector_store_ids": [vector_store.id]}],
+            tool_choice={"type": "file_search"},
+            include=["file_search_call.results"],
+            stream=False,
+        )
+        print(f"[context] document: {doc_text}")
+        print(f"[context] question: {question}")
+        print(f"[response] {response.output_text or response.output}")
+    finally:
+        if vector_store is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=vector_store.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete vector store: {e}", "yellow"))
+        if uploaded_file is not None:
+            try:
+                client.files.delete(file_id=uploaded_file.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete file: {e}", "yellow"))
 
 
 if __name__ == "__main__":

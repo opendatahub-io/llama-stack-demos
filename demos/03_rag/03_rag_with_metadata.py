@@ -111,50 +111,58 @@ def main(
         return
     provider_id = vector_providers[0].provider_id
 
-    vector_store = client.vector_stores.create(
-        name=f"rag_metadata_{uuid4()}",
-        extra_body={
-            "provider_id": provider_id,
-            "embedding_model": embedding_model,
-            "embedding_dimension": embedding_dimension,
-        },
-    )
+    vector_store = None
+    try:
+        vector_store = client.vector_stores.create(
+            name=f"rag_metadata_{uuid4()}",
+            extra_body={
+                "provider_id": provider_id,
+                "embedding_model": embedding_model,
+                "embedding_dimension": embedding_dimension,
+            },
+        )
 
-    # Attach two documents with different metadata attributes.
-    _attach_text(
-        client,
-        vector_store.id,
-        "Llama Stack provides a unified API for models, tools, and vector stores.",
-        "doc_a.txt",
-        {"source": "doc_a"},
-    )
-    _attach_text(
-        client,
-        vector_store.id,
-        "Llama Stack supports serving models and building agentic workflows.",
-        "doc_b.txt",
-        {"source": "doc_b"},
-    )
+        # Attach two documents with different metadata attributes.
+        _attach_text(
+            client,
+            vector_store.id,
+            "Llama Stack provides a unified API for models, tools, and vector stores.",
+            "doc_a.txt",
+            {"source": "doc_a"},
+        )
+        _attach_text(
+            client,
+            vector_store.id,
+            "Llama Stack supports serving models and building agentic workflows.",
+            "doc_b.txt",
+            {"source": "doc_b"},
+        )
 
-    response = client.responses.create(
-        model=resolved_model,
-        instructions="Use file_search with metadata filters to answer the question.",
-        input=[{"role": "user", "content": question}],
-        tools=[
-            {
-                "type": "file_search",
-                "vector_store_ids": [vector_store.id],
-                "filters": {"source": source},
-            }
-        ],
-        tool_choice={"type": "file_search"},
-        include=["file_search_call.results"],
-        stream=False,
-    )
+        response = client.responses.create(
+            model=resolved_model,
+            instructions="Use file_search with metadata filters to answer the question.",
+            input=[{"role": "user", "content": question}],
+            tools=[
+                {
+                    "type": "file_search",
+                    "vector_store_ids": [vector_store.id],
+                    "filters": {"type": "eq", "key": "source", "value": source},
+                }
+            ],
+            tool_choice={"type": "file_search"},
+            include=["file_search_call.results"],
+            stream=False,
+        )
 
-    print(f"[context] filter source: {source}")
-    print(f"[context] question: {question}")
-    print(f"[response] {response.output_text or response.output}")
+        print(f"[context] filter source: {source}")
+        print(f"[context] question: {question}")
+        print(f"[response] {response.output_text or response.output}")
+    finally:
+        if vector_store is not None:
+            try:
+                client.vector_stores.delete(vector_store_id=vector_store.id)
+            except Exception as e:
+                print(colored(f"Warning: Failed to delete vector store: {e}", "yellow"))
 
 
 if __name__ == "__main__":
