@@ -1,0 +1,179 @@
+"""
+Demo: Chunking Strategies
+
+Description:
+This demo teaches how different chunking strategies affect retrieval quality and response generation in RAG systems.
+
+Learning Objectives:
+- Configure static chunking strategies with different parameters
+- Compare small vs. large chunk sizes for retrieval
+- Understand the impact of chunk overlap on retrieval quality
+- Choose appropriate chunking strategies for different use cases
+"""
+
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the terms described in the LICENSE file in
+# the root directory of this source tree.
+
+from __future__ import annotations
+
+from io import BytesIO
+import os
+from uuid import uuid4
+
+import fire
+from llama_stack_client import LlamaStackClient
+from termcolor import colored
+
+from demos.shared.utils import (
+    can_model_chat,
+    check_model_is_available,
+    get_any_available_chat_model,
+    get_any_available_embedding_model,
+    get_embedding_dimension,
+)
+
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - optional dependency
+    load_dotenv = None
+
+
+def _maybe_load_dotenv() -> None:
+    if load_dotenv is not None:
+        load_dotenv()
+
+
+def _attach_with_chunking(
+    client: LlamaStackClient,
+    vector_store_id: str,
+    text: str,
+    filename: str,
+    chunking_strategy: dict,
+) -> None:
+    # Upload inline text as a file and attach it with the chosen chunking strategy.
+    file_buffer = BytesIO(text.encode("utf-8"))
+    file_buffer.name = filename
+    uploaded_file = client.files.create(file=file_buffer, purpose="assistants")
+    client.vector_stores.files.create(
+        vector_store_id=vector_store_id,
+        file_id=uploaded_file.id,
+        chunking_strategy=chunking_strategy,
+    )
+
+
+def main(
+    host: str,
+    port: int,
+    model_id: str | None = None,
+    embedding_model_id: str | None = None,
+    question: str = "What does Llama Stack provide?",
+) -> None:
+    _maybe_load_dotenv()
+
+    client = LlamaStackClient(base_url=f"http://{host}:{port}")
+    # Select a chat-capable model for the RAG response.
+    resolved_model = model_id or os.getenv("LLAMA_STACK_MODEL")
+    if resolved_model is None:
+        resolved_model = get_any_available_chat_model(client)
+        if resolved_model is None:
+            return
+    else:
+        if not check_model_is_available(client, resolved_model):
+            return
+        if not can_model_chat(client, resolved_model):
+            print(
+                colored(
+                    f"Model `{resolved_model}` does not support chat. Choose a chat-capable model.",
+                    "red",
+                )
+            )
+            return
+
+    embedding_model = embedding_model_id or get_any_available_embedding_model(client)
+    if embedding_model is None:
+        return
+
+    embedding_dimension = get_embedding_dimension(client, embedding_model)
+    if embedding_dimension is None:
+        print(colored("Unable to determine embedding dimension.", "red"))
+        return
+
+    vector_providers = [provider for provider in client.providers.list() if provider.api == "vector_io"]
+    if not vector_providers:
+        print(colored("No available vector_io providers. Exiting.", "red"))
+        return
+    provider_id = vector_providers[0].provider_id
+
+    # Create two vector stores with the same document but different chunk sizes.
+    store_small = client.vector_stores.create(
+        name=f"chunk_small_{uuid4()}",
+        extra_body={
+            "provider_id": provider_id,
+            "embedding_model": embedding_model,
+            "embedding_dimension": embedding_dimension,
+        },
+    )
+    store_large = client.vector_stores.create(
+        name=f"chunk_large_{uuid4()}",
+        extra_body={
+            "provider_id": provider_id,
+            "embedding_model": embedding_model,
+            "embedding_dimension": embedding_dimension,
+        },
+    )
+
+    # Same document content for both stores to isolate chunking differences.
+    doc_text = (
+        "Llama Stack provides a unified API for models, tools, and vector stores. "
+        "It supports serving, evaluation, and agentic workflows. "
+        "You can build RAG systems and multi-tool agents with it."
+    )
+
+    _attach_with_chunking(
+        client,
+        store_small.id,
+        doc_text,
+        "chunk_small.txt",
+        {"type": "static", "static": {"max_chunk_size_tokens": 128, "chunk_overlap_tokens": 16}},
+    )
+    _attach_with_chunking(
+        client,
+        store_large.id,
+        doc_text,
+        "chunk_large.txt",
+        {"type": "static", "static": {"max_chunk_size_tokens": 512, "chunk_overlap_tokens": 64}},
+    )
+
+    # Query the store with smaller chunks.
+    response_small = client.responses.create(
+        model=resolved_model,
+        instructions="Use file_search and answer briefly.",
+        input=[{"role": "user", "content": question}],
+        tools=[{"type": "file_search", "vector_store_ids": [store_small.id]}],
+        tool_choice={"type": "file_search"},
+        include=["file_search_call.results"],
+        stream=False,
+    )
+    # Query the store with larger chunks.
+    response_large = client.responses.create(
+        model=resolved_model,
+        instructions="Use file_search and answer briefly.",
+        input=[{"role": "user", "content": question}],
+        tools=[{"type": "file_search", "vector_store_ids": [store_large.id]}],
+        tool_choice={"type": "file_search"},
+        include=["file_search_call.results"],
+        stream=False,
+    )
+
+    print(f"[context] question: {question}")
+    print(f"[small chunks] store={store_small.id}")
+    print(f"[small chunks] response: {response_small.output_text or response_small.output}")
+    print(f"[large chunks] store={store_large.id}")
+    print(f"[large chunks] response: {response_large.output_text or response_large.output}")
+
+
+if __name__ == "__main__":
+    fire.Fire(main)

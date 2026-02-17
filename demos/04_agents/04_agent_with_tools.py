@@ -1,26 +1,23 @@
-"""
-Demo: Tool Registration
-
-Description:
-This demo teaches how to register and use custom client-side tools with agents for function calling capabilities.
-
-Learning Objectives:
-- Register custom Python functions as agent tools
-- Create agents with tool-calling capabilities
-- Handle tool execution during agent conversations
-- Differentiate between client-side and server-side tools
-"""
-
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 #
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 
-from __future__ import annotations
+"""
+Demo: Agent with Tools
+
+Description:
+This demo teaches how to create agents with multiple custom client-side tools for specialized tasks.
+
+Learning Objectives:
+- Register multiple client-side tools with an agent
+- Enable agents to automatically select and execute appropriate tools
+- Combine calculator, web search, and stock ticker tools in one agent
+- Build multi-capability agents with tool orchestration
+"""
 
 import os
-
 import fire
 from termcolor import colored
 
@@ -33,12 +30,7 @@ from llama_stack_client import LlamaStackClient, Agent, AgentEventLogger
 from demos.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
 
-def main(
-    host: str,
-    port: int,
-    model_id: str | None = None,
-    list_server_tools: bool = False,
-):
+def main(host: str, port: int, model_id: str | None = None):
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
 
     api_key = ""
@@ -72,42 +64,24 @@ def main(
             )
             return
 
-    # Register tools by passing them to the Agent constructor.
-    # These tools are available to this agent instance during inference.
-    tools = [
-        calculator,
-        get_ticker_data,
-    ]
-    if api_key:
-        tools.append(WebSearchTool(engine, api_key))
     agent = Agent(
         client,
         model=model_id,
-        instructions="You are a helpful assistant. Use tools when they are relevant.",
-        tools=tools,
+        instructions="You are a helpful assistant. Use the tools you have access to for providing relevant answers.",
+        tools=[
+            calculator,
+            get_ticker_data,
+            # Note: While you can also use "builtin::websearch" as a tool,
+            # this example shows how to use a client side custom web search tool.
+            WebSearchTool(engine, api_key),
+        ],
     )
 
-    print("Registered tools for this agent:")
-    for tool in tools:
-        tool_name = getattr(tool, "name", None) or getattr(tool, "__name__", None) or str(tool)
-        print(f"- {tool_name}")
-
-    if list_server_tools:
-        # Server-side tool registry (if enabled) is separate from client-side tools.
-        # Client tools registered above will not appear in this list.
-        try:
-            tool_list = client.tools.list()
-            print("Server-side tools:")
-            for tool_def in tool_list:
-                print(f"- {tool_def.name}")
-        except Exception as exc:
-            print(colored(f"Failed to list server tools: {exc}", "yellow"))
-
-    session_id = agent.create_session("tool-registration-session")
+    session_id = agent.create_session("test-session")
     print(f"Created session_id={session_id}")
 
     user_prompts = [
-        "What was the closing price of GOOG for 2023?",
+        "What was the closing price of Google stock (ticker symbol GOOG) for 2023 ?",
         "Who was the 42nd president of the United States?",
         "What is 40+30?",
     ]
