@@ -1,8 +1,0 @@
-anyio
-click
-httpx
-pydantic
-pyyaml
-mcp
-uvicorn
-starlette
