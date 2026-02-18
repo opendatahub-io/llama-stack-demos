@@ -47,3 +47,9 @@ Foundation examples demonstrating core Llama Stack concepts and basic usage patt
 
 ### 02_responses_basic
 Basic examples showing how to work with responses in Llama Stack.
+
+### 03_rag
+RAG (Retrieval-Augmented Generation) examples showing how to ground model responses in retrieved documents using Llama Stack's vector stores and search capabilities.
+
+### 04_agents
+Agent examples demonstrating how to build conversational agents with various capabilities including chat, multimodal processing, document grounding, custom tools, and multi-agent coordination.
