@@ -104,16 +104,15 @@ python -m demos.01_foundations.05_insert_documents localhost 8321 --vector_store
 python -m demos.01_foundations.06_search_vectors localhost 8321 --query "What does Llama Stack do?"
 ```
 
-### Demo 7: Tool Registration
+### Demo 7: Tool Runtime API
 **File**: `07_tool_registration.py`
 
-**Concepts**: Client-side tool registration, function calling, custom tool implementation, agent tool integration
+**Concepts**: Tool runtime API, toolgroup registration, tool invocation, provider management, direct tool calls
 
-**Description**: Shows how to register custom Python functions (calculator, stock ticker, web search) as tools that agents can call during conversations.
+**Description**: Demonstrates how to use the Llama Stack tool runtime APIs to register toolgroups, list available tools, and invoke tools directly without using agents or MCP servers. Shows the core APIs: `toolgroups.register()`, `tool_runtime.list_tools()`, and `tool_runtime.invoke_tool()`.
 
 **Run**:
 ```bash
-export TAVILY_SEARCH_API_KEY=your_key_here
 python -m demos.01_foundations.07_tool_registration localhost 8321
 ```
 
