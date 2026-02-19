@@ -1,7 +1,0 @@
-apiVersion: observability.openshift.io/v1alpha1
-kind: UIPlugin
-metadata:
-  # It will not work with any other name
-  name: distributed-tracing
-spec:
-  type: DistributedTracing
