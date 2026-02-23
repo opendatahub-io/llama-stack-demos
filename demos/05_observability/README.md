@@ -4,7 +4,7 @@ This directory contains configuration files and a setup script to deploy a full 
 
 ## Architecture
 
-```
+```text
 ┌──────────────┐
 │  Llama Stack │──┐
 │  Server      │  │  OTLP     ┌───────────────────┐   scrape    ┌──────────────┐
@@ -53,11 +53,11 @@ Run the setup script to start Jaeger, OTel Collector, Prometheus, and Grafana:
 
 ```bash
 # Auto-detect container runtime (podman or docker)
-./scripts/telemetry/setup_telemetry.sh
+./setup_telemetry.sh
 
 # Or specify a container runtime explicitly
-./scripts/telemetry/setup_telemetry.sh --container docker
-./scripts/telemetry/setup_telemetry.sh --container podman
+./setup_telemetry.sh --container docker
+./setup_telemetry.sh --container podman
 ```
 
 This will:

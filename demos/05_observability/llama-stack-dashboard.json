@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -105,7 +105,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(gen_ai_request_model) (llama_stack_gen_ai_client_token_usage_sum{gen_ai_token_type=\"input\"})",
+          "expr": "sum by(gen_ai_request_model) (rate(llama_stack_gen_ai_client_token_usage_sum{gen_ai_token_type=\"input\"}[5m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -201,7 +201,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "sum by(gen_ai_request_model) (llama_stack_gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"})",
+          "expr": "sum by(gen_ai_request_model) (rate(llama_stack_gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"}[5m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "interval": "",
@@ -296,7 +296,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, rate(llama_stack_http_server_duration_milliseconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(llama_stack_http_server_duration_milliseconds_bucket[5m])))",
           "legendFormat": "p95",
           "refId": "A"
         },
@@ -305,7 +305,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, rate(llama_stack_http_server_duration_milliseconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(llama_stack_http_server_duration_milliseconds_bucket[5m])))",
           "legendFormat": "p99",
           "refId": "B"
         }
