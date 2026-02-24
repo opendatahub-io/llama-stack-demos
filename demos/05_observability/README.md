@@ -7,16 +7,16 @@ This directory contains configuration files and a setup script to deploy a full 
 ```text
 ┌──────────────┐
 │  Llama Stack │──┐
-│  Server      │  │  OTLP     ┌───────────────────┐   scrape    ┌──────────────┐
-└──────────────┘  ├─────────►│  OTel Collector     │◄───────────│  Prometheus  │
+│  Server      │  │  OTLP    ┌-─────────-──────────┐   scrape   ┌──────────────┐
+└──────────────┘  ├---------►│  OTel Collector     │◄-----------│  Prometheus  │
 ┌──────────────┐  │  :4318   │  :4317 (gRPC)       │   :9464    │  :9090       │
 │  Llama Stack │──┘          │  :4318 (HTTP)       │            └──────────────┘
 │  Client      │             └────────┬────────────┘                   ▲
 └──────────────┘                      │ OTLP                           │
                                       ▼                           datasource
                              ┌────────────────┐                        │
-                             │  Jaeger         │              ┌──────────────┐
-                             │  :16686 (UI)    │◄────────────│  Grafana     │
+                             │  Jaeger        │               ┌──────────────┐
+                             │  :16686 (UI)   │◄--------------│  Grafana     │
                              └────────────────┘  datasource   │  :3000 (UI)  │
                                                               └──────────────┘
 ```
