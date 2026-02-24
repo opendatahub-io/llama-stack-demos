@@ -39,13 +39,15 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     load_dotenv = None
 
-
+# Note: Using .mdx URLs may produce misleading search scores due to
+# JSX syntax and Docusaurus-specific markup being included in embeddings.
+# For production use, consider using plain .md files instead.
 DEFAULT_URLS = [
-    "https://raw.githubusercontent.com/pytorch/torchtune/main/docs/source/tutorials/memory_optimizations.rst",
-    "https://raw.githubusercontent.com/pytorch/torchtune/main/docs/source/tutorials/chat.rst",
-    "https://raw.githubusercontent.com/pytorch/torchtune/main/docs/source/tutorials/llama3.rst",
-    "https://raw.githubusercontent.com/pytorch/torchtune/main/docs/source/tutorials/qat_finetune.rst",
-    "https://raw.githubusercontent.com/pytorch/torchtune/main/docs/source/tutorials/lora_finetune.rst",
+    "https://raw.githubusercontent.com/llamastack/llama-stack/refs/heads/main/README.md",
+    "https://raw.githubusercontent.com/llamastack/llama-stack/refs/heads/main/docs/docs/index.mdx",
+    "https://raw.githubusercontent.com/llamastack/llama-stack/refs/heads/main/docs/docs/getting_started/quickstart.mdx",
+    "https://raw.githubusercontent.com/llamastack/llama-stack/refs/heads/main/docs/docs/concepts/architecture.mdx",
+    "https://raw.githubusercontent.com/llamastack/llama-stack/refs/heads/main/docs/docs/api-overview.md",
 ]
 
 
