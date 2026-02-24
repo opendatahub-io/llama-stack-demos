@@ -55,7 +55,7 @@ kubectl apply -f vllm-serve/03-vllm-server-service.yaml
 
 The vLLM server will:
 - Serve an OpenAI-compatible API on port 8000
-- Mount model cache at `/root/.cache/huggingface`
+- Mount model cache at `/cache/huggingface`
 - Use the HF token for authentication
 
 ### Step 3: Install Llama Stack Operator
@@ -78,6 +78,7 @@ kubectl get pods -n llama-stack-k8s-operator-system
 Create a `LlamaStackDistribution` custom resource:
 
 ```bash
+# Create Llama Stack distribution
 kubectl apply -f llama-stack/00-lls-cr.yaml
 ```
 
@@ -112,7 +113,7 @@ The deployment consists of the following YAML files:
 - `03-vllm-server-service.yaml` - ClusterIP service exposing vLLM on port 8000
 
 ### Llama Stack (`llama-stack/`)
-- `01-lls-cr.yaml` - LlamaStackDistribution custom resource
+- `00-lls-cr.yaml` - LlamaStackDistribution custom resource
 
 ## Troubleshooting
 
@@ -152,10 +153,10 @@ kubectl logs -l app.kubernetes.io/instance=llamastack-vllm
 
 ### Using a Different Model
 
-Edit `vllm-serve/03-vllm-server-deploy.yaml` and change the model in the args:
+Edit `vllm-serve/02-vllm-server-deploy.yaml` and change the model in the args:
 
 ```yaml
-args: ["vllm serve your-model-name"]
+args: ["serve", "your-model-name"]
 ```
 
 ### Custom Llama Stack Configuration
@@ -179,7 +180,7 @@ To remove all resources:
 
 ```bash
 # Delete Llama Stack deployment
-kubectl delete -f llama-stack/01-lls-cr.yaml
+kubectl delete -f llama-stack/00-lls-cr.yaml
 
 # Delete vLLM resources
 kubectl delete -f vllm-serve/03-vllm-server-service.yaml
@@ -188,7 +189,7 @@ kubectl delete -f vllm-serve/01-vllm-models-pvc.yaml
 envsubst < vllm-serve/00-hf-token-secret.yaml | kubectl delete -f -
 
 # Delete operator
-kubectl delete -f llama-stack/00-lls-operator.yaml
+kubectl delete -f https://raw.githubusercontent.com/llamastack/llama-stack-k8s-operator/main/release/operator.yaml
 
 # Delete Kind cluster
 kind delete cluster --name llama-stack-test

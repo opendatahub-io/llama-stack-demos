@@ -12,23 +12,79 @@ spec:
       labels:
         app.kubernetes.io/name: vllm
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: vllm
         image: quay.io/higginsd/vllm-cpu:65393ee064-qwen3
-        command: ["/bin/sh", "-c"]
-        args: ["vllm serve Qwen/Qwen3-0.6B"]
+        command: ["vllm"]
+        args: ["serve", "Qwen/Qwen3-0.6B"]
         env:
-        - name: HUGGING_FACE_HUB_TOKEN
+        - name: TORCHINDUCTOR_CACHE_DIR
+          value: /tmp/torchinductor
+        - name: HF_TOKEN
           valueFrom:
             secretKeyRef:
               name: hf-token-secret
               key: token
+        - name: HF_HOME
+          value: /cache/huggingface
+        - name: TRANSFORMERS_CACHE
+          value: /cache/huggingface
+        - name: HF_HUB_CACHE
+          value: /cache/huggingface
+        - name: XDG_CACHE_HOME
+          value: /cache/huggingface
         ports:
-          - containerPort: 8000
+        - containerPort: 8000
+          name: http
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
         volumeMounts:
-          - name: llama-storage
-            mountPath: /root/.cache/huggingface
+        - name: llama-storage
+          mountPath: /cache/huggingface
+        - name: tmp
+          mountPath: /tmp
+        - name: shm
+          mountPath: /dev/shm
       volumes:
       - name: llama-storage
         persistentVolumeClaim:
           claimName: vllm-models
+      - name: tmp
+        emptyDir: {}
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 2Gi
