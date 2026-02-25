@@ -12,79 +12,48 @@ spec:
       labels:
         app.kubernetes.io/name: vllm
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       containers:
-      - name: vllm
-        image: public.ecr.aws/q9t5s3a7/vllm-arm64-cpu-release-repo:latest
-        command: ["vllm"]
-        args: ["serve", "Qwen/Qwen3-0.6B"]
+      - args:
+        - vllm serve meta-llama/Llama-3.2-1B-Instruct --served-model-name meta-llama/Llama-3.2-1B-Instruct
+          --max-model-len 8192 --dtype float32
+        command:
+        - /bin/sh
+        - -c
         env:
-        - name: TORCHINDUCTOR_CACHE_DIR
-          value: /tmp/torchinductor
+        - name: VLLM_CPU_KVCACHE_SPACE
+          value: "2"
         - name: HF_TOKEN
           valueFrom:
             secretKeyRef:
-              name: hf-token-secret
               key: token
-        - name: HF_HOME
-          value: /cache/huggingface
+              name: hf-token-secret
+        - name: HUGGINGFACE_HUB_CACHE
+          value: /tmp/hf
         - name: TRANSFORMERS_CACHE
-          value: /cache/huggingface
-        - name: HF_HUB_CACHE
-          value: /cache/huggingface
-        - name: XDG_CACHE_HOME
-          value: /cache/huggingface
+          value: /tmp/hf
+        - name: OMP_NUM_THREADS
+          value: "4"
+        - name: MKL_NUM_THREADS
+          value: "4"
+        - name: OMP_PROC_BIND
+          value: "false"
+        - name: OMP_PLACES
+          value: threads
+        - name: KMP_AFFINITY
+          value: disabled
+        - name: VLLM_LOGGING_LEVEL
+          value: DEBUG
+        image: public.ecr.aws/q9t5s3a7/vllm-cpu-release-repo:latest
+        imagePullPolicy: Always
+        name: vllm
         ports:
         - containerPort: 8000
-          name: http
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1000
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-        resources:
-          requests:
-            memory: "4Gi"
-            cpu: "2000m"
-          limits:
-            memory: "8Gi"
-            cpu: "4000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 120
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 60
-          periodSeconds: 5
-          timeoutSeconds: 5
-          failureThreshold: 3
+          protocol: TCP
+        resources: {}
         volumeMounts:
-        - name: llama-storage
-          mountPath: /cache/huggingface
-        - name: tmp
-          mountPath: /tmp
-        - name: shm
-          mountPath: /dev/shm
+        - mountPath: /root/.cache/huggingface
+          name: llama-storage
       volumes:
       - name: llama-storage
         persistentVolumeClaim:
           claimName: vllm-models
-      - name: tmp
-        emptyDir: {}
-      - name: shm
-        emptyDir:
-          medium: Memory
-          sizeLimit: 2Gi
