@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: math-mcp-server
+  labels:
+    app: math-mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: math-mcp-server
+  template:
+    metadata:
+      labels:
+        app: math-mcp-server
+    spec:
+      containers:
+      - name: math-mcp
+        image: math-mcp-server:latest
+        imagePullPolicy: Never  # Use local image in Kind
+        ports:
+        - containerPort: 8080
+          name: mcp
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5

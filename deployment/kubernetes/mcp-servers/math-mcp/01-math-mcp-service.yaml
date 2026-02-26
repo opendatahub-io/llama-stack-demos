@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: math-mcp-server
+  labels:
+    app: math-mcp-server
+spec:
+  selector:
+    app: math-mcp-server
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+    name: mcp
+  type: ClusterIP
