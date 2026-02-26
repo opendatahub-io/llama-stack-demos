@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vllm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vllm
+    spec:
+      containers:
+      - args:
+        - vllm serve meta-llama/Llama-3.2-1B-Instruct --served-model-name meta-llama/Llama-3.2-1B-Instruct
+          --max-model-len 8192 --dtype float32
+        command:
+        - /bin/sh
+        - -c
+        env:
+        - name: VLLM_CPU_KVCACHE_SPACE
+          value: "2"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: hf-token-secret
+        - name: HUGGINGFACE_HUB_CACHE
+          value: /tmp/hf
+        - name: TRANSFORMERS_CACHE
+          value: /tmp/hf
+        - name: OMP_NUM_THREADS
+          value: "4"
+        - name: MKL_NUM_THREADS
+          value: "4"
+        - name: OMP_PROC_BIND
+          value: "false"
+        - name: OMP_PLACES
+          value: threads
+        - name: KMP_AFFINITY
+          value: disabled
+        - name: VLLM_LOGGING_LEVEL
+          value: DEBUG
+        image: public.ecr.aws/q9t5s3a7/vllm-cpu-release-repo:latest
+        imagePullPolicy: Always
+        name: vllm
+        ports:
+        - containerPort: 8000
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - mountPath: /root/.cache/huggingface
+          name: llama-storage
+      volumes:
+      - name: llama-storage
+        persistentVolumeClaim:
+          claimName: vllm-models
