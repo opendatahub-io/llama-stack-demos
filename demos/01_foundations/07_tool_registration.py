@@ -25,6 +25,16 @@ from termcolor import colored
 
 from llama_stack_client import LlamaStackClient
 
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - optional dependency
+    load_dotenv = None
+
+
+def _maybe_load_dotenv() -> None:
+    if load_dotenv is not None:
+        load_dotenv()
+
 
 def main(
     host: str,
@@ -33,6 +43,8 @@ def main(
     """
     Demonstrate tool runtime APIs: toolgroups.register, tool_runtime.list_tools, and tool_runtime.invoke_tool
     """
+    _maybe_load_dotenv()
+
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
 
     print(colored("\n=== Step 1: Check Available Tool Runtime Providers ===", "green"))
