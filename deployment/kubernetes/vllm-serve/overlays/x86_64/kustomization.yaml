@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+  - ../../base
+
+images:
+  - name: public.ecr.aws/q9t5s3a7/vllm-cpu-release-repo
+    newName: public.ecr.aws/q9t5s3a7/vllm-cpu-release-repo
+    newTag: latest
+
+namePrefix: x86-64-
