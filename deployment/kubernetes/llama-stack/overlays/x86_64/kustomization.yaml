@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: LlamaStackDistribution
+      name: llamastack-vllm
+    patch: |-
+      - op: replace
+        path: /spec/server/containerSpec/env/0/value
+        value: "http://x86-64-vllm-server.default.svc.cluster.local:8000/v1"
