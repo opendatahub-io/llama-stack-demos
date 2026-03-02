@@ -1,5 +1,21 @@
 # Foundations
 
+## Prerequisites
+
+Before running these demos, ensure you have a Llama Stack server running:
+
+**Option 1: Local Server (Recommended for learning)**
+```bash
+# Follow the setup instructions in ../README.md to install Ollama and start the server
+llama stack run starter  # Runs on localhost:8321
+```
+
+**Option 2: Remote Server**
+If using a remote server (e.g., OpenShift AI), ensure you have:
+- Network access to the server
+- Authentication token configured in `.env` file (`LLAMA_STACK_CLIENT_API_KEY`)
+- Port forwarding set up if needed
+
 ## Overview
 This folder teaches the fundamental building blocks of Llama Stack, including client setup, chat completions, vector databases, and tool integration. These examples cover the core APIs and concepts needed to build AI applications.
 
