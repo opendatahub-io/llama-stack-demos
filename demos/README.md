@@ -53,3 +53,6 @@ RAG (Retrieval-Augmented Generation) examples showing how to ground model respon
 
 ### 04_agents
 Agent examples demonstrating how to build conversational agents with various capabilities including chat, multimodal processing, document grounding, custom tools, and multi-agent coordination.
+
+### 06_openai_compatibility
+Demos showing that existing OpenAI Python SDK code works against a Llama Stack server with only a `base_url` change, covering chat completions, tool calling, and the Responses API.
