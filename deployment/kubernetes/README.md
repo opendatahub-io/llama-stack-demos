@@ -27,38 +27,32 @@ export HF_TOKEN=$(echo -n "your-hugging-face-token" | base64)
 
 This token is required for downloading models from Hugging Face.
 
+Edit `vllm-serve/base/00-hf-token-secret.yaml` with your base64-encoded token.
+
 ## Deployment Steps
 
-### Step 1: Deploy Storage and Secrets
+### Step 1: Deploy vLLM Server
 
-First, create the Hugging Face token secret and persistent volume claim for model storage:
-
-```bash
-# Create secret with HF token (uses envsubst to substitute $HF_TOKEN)
-envsubst < vllm-serve/00-hf-token-secret.yaml | kubectl apply -f -
-
-# Create PVC for model storage (50Gi)
-kubectl apply -f vllm-serve/01-vllm-models-pvc.yaml
-```
-
-### Step 2: Deploy vLLM Server
-
-Deploy the vLLM server that will serve the Qwen/Qwen3-0.6B model:
+Deploy the vLLM server using Kustomize. Choose the overlay matching your CPU architecture:
 
 ```bash
-# Create vLLM deployment
-kubectl apply -f vllm-serve/02-vllm-server-deploy.yaml
+# For x86_64 (Intel/AMD)
+kubectl apply -k vllm-serve/overlays/x86_64/
 
-# Create vLLM service (ClusterIP on port 8000)
-kubectl apply -f vllm-serve/03-vllm-server-service.yaml
+# For ARM64 (Apple Silicon, ARM servers)
+kubectl apply -k vllm-serve/overlays/arm64/
 ```
+
+The overlays use architecture-specific container images:
+- x86_64: `public.ecr.aws/q9t5s3a7/vllm-cpu-release-repo:latest`
+- ARM64: `public.ecr.aws/q9t5s3a7/vllm-arm64-cpu-release-repo:latest`
 
 The vLLM server will:
 - Serve an OpenAI-compatible API on port 8000
 - Mount model cache at `/cache/huggingface`
 - Use the HF token for authentication
 
-### Step 3: Install Llama Stack Operator
+### Step 2: Install Llama Stack Operator
 
 Install the Llama Stack Kubernetes operator:
 
@@ -73,7 +67,7 @@ Verify the operator is running:
 kubectl get pods -n llama-stack-k8s-operator-system
 ```
 
-### Step 4: Deploy Llama Stack
+### Step 3: Deploy Llama Stack
 
 Create a `LlamaStackDistribution` custom resource:
 
@@ -88,7 +82,7 @@ This creates a Llama Stack deployment that:
 - Connects to the vLLM service at `http://vllm-server.default.svc.cluster.local:8000/v1`
 - Allocates 20Gi of storage for Llama Stack data
 
-### Step 5: Test the Deployment
+### Step 4: Test the Deployment
 
 Forward the Llama Stack port to your local machine:
 
@@ -107,10 +101,21 @@ llama-stack-client --endpoint http://localhost:8321 inference chat-completion --
 The deployment consists of the following YAML files:
 
 ### vLLM Server (`vllm-serve/`)
-- `00-hf-token-secret.yaml` - Secret containing Hugging Face token
-- `01-vllm-models-pvc.yaml` - PersistentVolumeClaim (50Gi) for model storage
-- `02-vllm-server-deploy.yaml` - vLLM server deployment
-- `03-vllm-server-service.yaml` - ClusterIP service exposing vLLM on port 8000
+
+```text
+vllm-serve/
+├── base/                           # Base Kubernetes resources
+│   ├── kustomization.yaml
+│   ├── 00-hf-token-secret.yaml    # Secret containing Hugging Face token
+│   ├── 01-vllm-models-pvc.yaml    # PersistentVolumeClaim (50Gi) for model storage
+│   ├── 02-vllm-server-deploy.yaml # vLLM server deployment
+│   └── 03-vllm-server-service.yaml # ClusterIP service exposing vLLM on port 8000
+└── overlays/                       # Architecture-specific overlays
+    ├── x86_64/                     # Intel/AMD CPU variant
+    │   └── kustomization.yaml
+    └── arm64/                      # ARM64 CPU variant
+        └── kustomization.yaml
+```
 
 ### Llama Stack (`llama-stack/`)
 - `00-lls-cr.yaml` - LlamaStackDistribution custom resource
@@ -153,7 +158,7 @@ kubectl logs -l app.kubernetes.io/instance=llamastack-vllm
 
 ### Using a Different Model
 
-Edit `vllm-serve/02-vllm-server-deploy.yaml` and change the model in the args:
+Edit `vllm-serve/base/02-vllm-server-deploy.yaml` and change the model in the args:
 
 ```yaml
 args: ["serve", "your-model-name"]
@@ -170,10 +175,6 @@ To use a custom `config.yaml`, create a ConfigMap and reference it in the `Llama
 - [vLLM Documentation](https://docs.vllm.ai)
 - [LlamaStackDistribution API Reference](https://github.com/llamastack/llama-stack-k8s-operator/blob/main/docs/api-reference.md)
 
-## TODO
-
-**Introduce Kustomize support:** Reorganize the Kubernetes manifests into a Kustomize base-and-overlays structure so that all resources can be deployed with a single `kubectl apply -k` command instead of multiple individual `kubectl apply` calls. This will also remove the dependency on `envsubst` for secret templating and make it straightforward to manage environment-specific configurations (e.g., different model names, storage sizes, or replica counts for dev vs. production).
-
 ## Clean Up
 
 To remove all resources:
@@ -182,11 +183,8 @@ To remove all resources:
 # Delete Llama Stack deployment
 kubectl delete -f llama-stack/00-lls-cr.yaml
 
-# Delete vLLM resources
-kubectl delete -f vllm-serve/03-vllm-server-service.yaml
-kubectl delete -f vllm-serve/02-vllm-server-deploy.yaml
-kubectl delete -f vllm-serve/01-vllm-models-pvc.yaml
-envsubst < vllm-serve/00-hf-token-secret.yaml | kubectl delete -f -
+# Delete vLLM resources (use the same overlay you deployed with)
+kubectl delete -k vllm-serve/overlays/x86_64/  # or arm64
 
 # Delete operator
 kubectl delete -f https://raw.githubusercontent.com/llamastack/llama-stack-k8s-operator/main/release/operator.yaml
