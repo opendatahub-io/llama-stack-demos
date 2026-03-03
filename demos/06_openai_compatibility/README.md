@@ -8,7 +8,7 @@ Llama Stack implements OpenAI-compatible APIs (`/v1/chat/completions`, `/v1/resp
 |---|---|---|
 | **base_url** | `http://host:port` | `http://host:port/v1` (needs `/v1` suffix) |
 | **api_key** | Not required | Required by SDK; use `"fake"` or set `LLAMA_STACK_API_KEY` |
-| **Shared utils** | Can import `demos.shared.utils` | Not compatible — model resolution is inlined |
+| **Shared utils** | Can import `demos.shared.utils` | Uses `resolve_openai_model` from `demos.shared.utils` |
 
 ## Demos
 

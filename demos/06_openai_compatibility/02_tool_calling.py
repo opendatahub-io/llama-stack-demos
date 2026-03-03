@@ -34,7 +34,7 @@ from shared.utils import resolve_openai_model
 
 try:
     from dotenv import load_dotenv
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     load_dotenv = None
 
 
@@ -90,11 +90,17 @@ def main(
     port: int,
     model_id: str | None = None,
     prompt: str = "What is the weather like in San Francisco?",
+    scheme: str = "http",
 ) -> None:
     _maybe_load_dotenv()
 
+    if scheme not in {"http", "https"}:
+        raise ValueError("scheme must be 'http' or 'https'")
+    if host not in {"localhost", "127.0.0.1", "::1"} and scheme != "https":
+        print(colored("Warning: using HTTP for a non-local host. Consider --scheme https.", "yellow"))
+
     client = OpenAI(
-        base_url=f"http://{host}:{port}/v1",
+        base_url=f"{scheme}://{host}:{port}/v1",
         api_key=os.getenv("LLAMA_STACK_API_KEY", "fake"),
     )
 
@@ -125,14 +131,27 @@ def main(
     messages.append(assistant_message)
     for tool_call in assistant_message.tool_calls:
         fn_name = tool_call.function.name
-        fn_args = json.loads(tool_call.function.arguments)
+        try:
+            fn_args = json.loads(tool_call.function.arguments or "{}")
+            if not isinstance(fn_args, dict):
+                raise ValueError("arguments must be a JSON object")
+        except (json.JSONDecodeError, ValueError) as exc:
+            result = json.dumps({"error": f"Invalid arguments for {fn_name}: {exc}"})
+            print(colored(f"Tool result: {result}", "yellow"))
+            messages.append(
+                {"role": "tool", "tool_call_id": tool_call.id, "content": result}
+            )
+            continue
         print(colored(f"Tool call: {fn_name}({fn_args})", "yellow"))
 
         fn = TOOL_MAP.get(fn_name)
         if fn is None:
             result = json.dumps({"error": f"Unknown function: {fn_name}"})
         else:
-            result = fn(**fn_args)
+            try:
+                result = fn(**fn_args)
+            except TypeError as exc:
+                result = json.dumps({"error": f"Invalid parameters for {fn_name}: {exc}"})
         print(colored(f"Tool result: {result}", "yellow"))
 
         messages.append(

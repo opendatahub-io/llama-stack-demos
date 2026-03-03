@@ -43,12 +43,16 @@ def resolve_openai_model(client, model_id: str | None) -> str | None:
     Works with any OpenAI-compatible client that exposes ``client.models.list()``.
     """
     resolved = model_id or os.getenv("LLAMA_STACK_MODEL")
-    if resolved is not None:
+    if resolved:
         return resolved
     models = client.models.list()
     for m in models:
-        if "guard" not in m.id and "embed" not in m.id.lower():
-            return m.id
+        candidate = _get_model_id(m)
+        if not candidate:
+            continue
+        candidate_l = candidate.lower()
+        if _is_llm_model(m) and "guard" not in candidate_l and "embed" not in candidate_l:
+            return candidate
     print(colored("No available chat models found.", "red"))
     return None
 

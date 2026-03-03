@@ -30,7 +30,7 @@ from shared.utils import resolve_openai_model
 
 try:
     from dotenv import load_dotenv
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     load_dotenv = None
 
 
@@ -55,11 +55,17 @@ def main(
     model_id: str | None = None,
     prompt: str = "Give me a short summary of Llama Stack.",
     stream: bool = False,
+    scheme: str = "http",
 ) -> None:
     _maybe_load_dotenv()
 
+    if scheme not in {"http", "https"}:
+        raise ValueError("scheme must be 'http' or 'https'")
+    if host not in {"localhost", "127.0.0.1", "::1"} and scheme != "https":
+        print("Warning: using HTTP for a non-local host. Consider --scheme https.")
+
     client = OpenAI(
-        base_url=f"http://{host}:{port}/v1",
+        base_url=f"{scheme}://{host}:{port}/v1",
         api_key=os.getenv("LLAMA_STACK_API_KEY", "fake"),
     )
 
