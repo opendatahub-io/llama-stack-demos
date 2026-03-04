@@ -24,6 +24,16 @@ from termcolor import colored
 
 from llama_stack_client import LlamaStackClient
 
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - optional dependency
+    load_dotenv = None
+
+
+def _maybe_load_dotenv() -> None:
+    if load_dotenv is not None:
+        load_dotenv()
+
 
 def serve() -> None:
     """
@@ -84,6 +94,8 @@ def run(
     """
     Register an MCP toolgroup and invoke the add tool.
     """
+    _maybe_load_dotenv()
+
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
     provider = _get_toolgroup_provider(client, provider_id)
     registered = False
