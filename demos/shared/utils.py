@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -33,6 +34,26 @@ def _get_model_id(model) -> str | None:
         value = getattr(model, attr, None)
         if isinstance(value, str):
             return value
+    return None
+
+
+def resolve_openai_model(client, model_id: str | None) -> str | None:
+    """Pick a model: explicit id > env var > first available model.
+
+    Works with any OpenAI-compatible client that exposes ``client.models.list()``.
+    """
+    resolved = model_id or os.getenv("LLAMA_STACK_MODEL")
+    if resolved:
+        return resolved
+    models = client.models.list()
+    for m in models:
+        candidate = _get_model_id(m)
+        if not candidate:
+            continue
+        candidate_l = candidate.lower()
+        if _is_llm_model(m) and "guard" not in candidate_l and "embed" not in candidate_l:
+            return candidate
+    print(colored("No available chat models found.", "red"))
     return None
 
 
