@@ -30,6 +30,16 @@ from llama_stack_client import Agent, LlamaStackClient
 
 from demos.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - optional dependency
+    load_dotenv = None
+
+
+def _maybe_load_dotenv() -> None:
+    if load_dotenv is not None:
+        load_dotenv()
+
 
 def _resolve_web_tool():
     api_key = ""
@@ -87,6 +97,8 @@ def _extract_output(response) -> str:
 
 
 def main(host: str, port: int, model_id: str | None = None):
+    _maybe_load_dotenv()
+
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
 
     if model_id is None:
