@@ -32,7 +32,7 @@ from demos.shared.utils import can_model_chat, check_model_is_available, get_any
 
 try:
     from dotenv import load_dotenv
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     load_dotenv = None
 
 

@@ -28,7 +28,7 @@ from demos.shared.utils import check_model_is_available, get_any_available_chat_
 
 try:
     from dotenv import load_dotenv
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     load_dotenv = None
 
 
