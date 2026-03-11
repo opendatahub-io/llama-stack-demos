@@ -53,7 +53,7 @@ def main(
     host: str,
     port: int,
     model_id: str | None = None,
-    prompt: str = "Give me a short summary of Llama Stack.",
+    prompt: str = "What are the benefits of open-source software?",
     stream: bool = False,
     scheme: str = "http",
 ) -> None:
