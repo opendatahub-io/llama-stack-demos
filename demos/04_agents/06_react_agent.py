@@ -27,6 +27,16 @@ from termcolor import colored
 
 from demos.shared.utils import can_model_chat, check_model_is_available, get_any_available_chat_model
 
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - optional dependency
+    load_dotenv = None
+
+
+def _maybe_load_dotenv() -> None:
+    if load_dotenv is not None:
+        load_dotenv()
+
 
 def torchtune(query: str = "torchtune"):  # noqa: ARG001
     """
@@ -53,6 +63,8 @@ def torchtune(query: str = "torchtune"):  # noqa: ARG001
 
 
 def main(host: str, port: int, model_id: str | None = None):
+    _maybe_load_dotenv()
+
     tavily_api_key = os.getenv("TAVILY_SEARCH_API_KEY")
     if not tavily_api_key:
         print(
