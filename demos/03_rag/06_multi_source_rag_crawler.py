@@ -42,11 +42,13 @@ import hashlib
 import html
 import os
 import re
+import socket
 import urllib.parse
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 from io import BytesIO
+from ipaddress import ip_address
 from typing import Callable
 from uuid import uuid4
 
@@ -72,6 +74,9 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     _requests = None
 
+# Maximum bytes to download from any single URL.
+MAX_DOWNLOAD_BYTES = 15_000
+
 
 def _maybe_load_dotenv() -> None:
     if load_dotenv is not None:
@@ -83,6 +88,64 @@ def _strip_html(text: str) -> str:
     text = re.sub(r"<[^>]+>", " ", text)
     text = html.unescape(text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _redact_url(url: str) -> str:
+    """Strip query string and fragment from a URL to avoid leaking secrets."""
+    parts = urllib.parse.urlsplit(url)
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
+def _is_safe_url(url: str) -> bool:
+    """Reject URLs that resolve to private/loopback/reserved addresses (SSRF guard)."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    try:
+        for _family, _socktype, _proto, _canonname, sockaddr in socket.getaddrinfo(
+            parsed.hostname, None
+        ):
+            addr = ip_address(sockaddr[0])
+            if (
+                addr.is_private
+                or addr.is_loopback
+                or addr.is_link_local
+                or addr.is_reserved
+                or addr.is_multicast
+            ):
+                return False
+    except (socket.gaierror, ValueError):
+        return False
+    return True
+
+
+def _safe_download(url: str, headers: dict | None = None) -> str | None:
+    """Download text content from a URL with size and content-type guards.
+
+    Returns the text content (up to MAX_DOWNLOAD_BYTES) or None on failure.
+    """
+    if _requests is None:
+        return None
+
+    resp = _requests.get(
+        url, headers=headers or {}, timeout=(5, 15), stream=True, allow_redirects=False
+    )
+    if resp.status_code != 200:
+        return None
+
+    content_type = resp.headers.get("Content-Type", "").lower()
+    if content_type and "text" not in content_type and "json" not in content_type:
+        resp.close()
+        return None
+
+    content_length = int(resp.headers.get("Content-Length", "0") or 0)
+    if content_length > MAX_DOWNLOAD_BYTES * 10:
+        resp.close()
+        return None
+
+    raw_bytes = resp.raw.read(MAX_DOWNLOAD_BYTES, decode_content=True)
+    resp.close()
+    return raw_bytes.decode(resp.encoding or "utf-8", errors="replace")
 
 
 # ---------------------------------------------------------------------------
@@ -111,13 +174,20 @@ class DetectedLink:
 
 
 # Regex patterns for detecting links to different platforms.
+# The GitHub pattern only matches blob/tree content paths or bare repo roots
+# (terminated by whitespace/punctuation), avoiding false matches on /issues/,
+# /pull/, /releases/ etc.
 LINK_PATTERNS: dict[LinkType, re.Pattern] = {
     LinkType.GITHUB: re.compile(
-        r"https?://github\.com/([^/\s]+/[^/\s]+)(?:/(?:blob|tree)/[^/\s]+/([^\s)\"<>]*))?",
+        r"https?://github\.com/([^/\s]+/[^/\s]+)"
+        r"(?:/(?:blob|tree)/[^/\s]+/([^\s)\"<>]*))?"
+        r"(?=$|[\s)\"<>])",
         re.IGNORECASE,
     ),
     LinkType.GITLAB: re.compile(
-        r"https?://gitlab[^/\s]*/([^/\s]+/[^/\s]+)(?:/[-/]?(?:blob|tree)/[^/\s]+/([^\s)\"<>]*))?",
+        r"https?://gitlab[^/\s]*/([^/\s]+/[^/\s]+)"
+        r"(?:/[-/]?(?:blob|tree)/[^/\s]+/([^\s)\"<>]*))?"
+        r"(?=$|[\s)\"<>])",
         re.IGNORECASE,
     ),
     LinkType.CONFLUENCE: re.compile(
@@ -287,7 +357,7 @@ class MultiSourceCrawler:
     Example::
 
         crawler = MultiSourceCrawler(max_depth=2)
-        crawler.register_fetcher(LinkType.GITHUB, fetch_github_raw)
+        crawler.register_fetcher(LinkType.GITHUB, fetch_github)
         crawler.add_seed("https://github.com/org/repo", LinkType.GITHUB, "org/repo")
         documents = crawler.crawl()
     """
@@ -370,7 +440,7 @@ class MultiSourceCrawler:
             if doc.depth < self.max_depth:
                 child_trace = doc.trace.child(doc.url, doc.title)
                 for link in detect_links(doc.content):
-                    if link.url not in self._visited:
+                    if link.url not in self._visited and _is_safe_url(link.url):
                         self._queue.append(
                             _QueueItem(
                                 link_type=link.link_type,
@@ -400,8 +470,9 @@ def fetch_github(
     Works for public repositories without authentication.
     Set ``GITHUB_TOKEN`` env var to access private repos.
     """
-    if _requests is None:
-        print(colored("  requests library not installed, skipping GitHub fetch", "yellow"))
+    # Validate hostname to prevent token leakage to lookalike domains (CWE-200).
+    parsed = urllib.parse.urlparse(url)
+    if parsed.hostname != "github.com":
         return None
 
     # Build raw URL from github.com URL
@@ -417,14 +488,15 @@ def fetch_github(
 
     headers = {}
     token = os.environ.get("GITHUB_TOKEN")
-    if token:
+    # Only send token to the real raw.githubusercontent.com host.
+    raw_parsed = urllib.parse.urlparse(raw_url)
+    if token and raw_parsed.hostname == "raw.githubusercontent.com":
         headers["Authorization"] = f"token {token}"
 
-    resp = _requests.get(raw_url, headers=headers, timeout=15)
-    if resp.status_code != 200:
+    content = _safe_download(raw_url, headers)
+    if content is None:
         return None
 
-    content = resp.text[:15000]
     repo = identifier.split(":")[0]
     path = identifier.split(":", 1)[1] if ":" in identifier else "README.md"
 
@@ -473,9 +545,8 @@ def fetch_gitlab(
             f"/repository/files/{urllib.parse.quote(path, safe='')}/raw"
         )
         headers = {"PRIVATE-TOKEN": token}
-        resp = _requests.get(file_url, headers=headers, params={"ref": ref}, timeout=15)
-        if resp.status_code == 200:
-            content = resp.text[:15000]
+        content = _safe_download(f"{file_url}?ref={ref}", headers)
+        if content is not None:
             web_url = f"{base_url}/{repo}/-/blob/{ref}/{path}"
             return CrawledDocument(
                 url=web_url,
@@ -516,7 +587,7 @@ def fetch_confluence(
     headers = {"Authorization": f"Bearer {token}"}
     params = {"expand": "body.storage,space"}
 
-    resp = _requests.get(api_url, headers=headers, params=params, timeout=15)
+    resp = _requests.get(api_url, headers=headers, params=params, timeout=(5, 15))
     if resp.status_code != 200:
         return None
 
@@ -533,7 +604,7 @@ def fetch_confluence(
     return CrawledDocument(
         url=web_url,
         title=title,
-        content=content[:15000],
+        content=content[:MAX_DOWNLOAD_BYTES],
         source_type=LinkType.CONFLUENCE,
         trace=trace,
         metadata={"page_id": page_id, "space": space_key},
@@ -565,7 +636,7 @@ def fetch_jira(
     headers = {"Authorization": f"Bearer {token}"}
     params = {"fields": "summary,description,status,project,issuetype,comment"}
 
-    resp = _requests.get(api_url, headers=headers, params=params, timeout=15)
+    resp = _requests.get(api_url, headers=headers, params=params, timeout=(5, 15))
     if resp.status_code != 200:
         return None
 
@@ -601,7 +672,7 @@ def fetch_jira(
     return CrawledDocument(
         url=web_url,
         title=f"{issue_key}: {summary}",
-        content=content[:15000],
+        content=content[:MAX_DOWNLOAD_BYTES],
         source_type=LinkType.JIRA,
         trace=trace,
         metadata={"key": issue_key, "project": project, "status": status},
@@ -631,7 +702,7 @@ def fetch_google_doc(
     api_url = f"https://docs.googleapis.com/v1/documents/{doc_id}"
     params = {"key": api_key}
 
-    resp = _requests.get(api_url, params=params, timeout=15)
+    resp = _requests.get(api_url, params=params, timeout=(5, 15))
     if resp.status_code != 200:
         return None
 
@@ -656,7 +727,7 @@ def fetch_google_doc(
     return CrawledDocument(
         url=web_url,
         title=title,
-        content=content[:15000],
+        content=content[:MAX_DOWNLOAD_BYTES],
         source_type=LinkType.GOOGLE_DOCS,
         trace=trace,
         metadata={"doc_id": doc_id},
@@ -667,14 +738,13 @@ def fetch_web_page(
     identifier: str, url: str, trace: CrawlTrace
 ) -> CrawledDocument | None:
     """Fetch a plain-text or markdown web page."""
-    if _requests is None:
+    if not _is_safe_url(url):
         return None
 
-    resp = _requests.get(url, timeout=15)
-    if resp.status_code != 200:
+    content = _safe_download(url)
+    if content is None:
         return None
 
-    content = resp.text[:15000]
     title = url.rsplit("/", 1)[-1] or url
 
     return CrawledDocument(
@@ -783,20 +853,22 @@ def index_crawled_documents(
 
     Each document is chunked and uploaded as a file. Metadata (source URL,
     crawl depth, provenance path) is embedded in the content so the LLM
-    can cite sources.
+    can cite sources. URLs are redacted (query strings stripped) to avoid
+    persisting secrets like signed tokens.
 
     Returns the number of chunks indexed.
     """
     indexed = 0
     for doc in documents:
-        # Build a crawl-path breadcrumb for provenance
-        provenance = " -> ".join(doc.trace.path + [doc.url]) if doc.trace.path else doc.url
+        # Build a crawl-path breadcrumb for provenance (with redacted URLs)
+        redacted_path = [*map(_redact_url, doc.trace.path), _redact_url(doc.url)]
+        provenance = " -> ".join(redacted_path)
 
         chunks = _chunk_text(doc.content, chunk_size)
         for i, chunk in enumerate(chunks):
             # Embed source metadata directly in the chunk content
             enriched = (
-                f"Source: {doc.url}\n"
+                f"Source: {_redact_url(doc.url)}\n"
                 f"Crawl path: {provenance}\n"
                 f"Depth: {doc.depth}\n\n"
                 f"{chunk}"
