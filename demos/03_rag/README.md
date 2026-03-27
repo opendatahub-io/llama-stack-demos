@@ -9,6 +9,7 @@ This folder teaches Retrieval-Augmented Generation (RAG) techniques using Llama 
 - Filter search results using metadata attributes
 - Optimize chunking strategies for different use cases
 - Implement hybrid search combining local and web sources
+- Crawl and index documents across platforms with link following
 
 ## Demos
 
@@ -89,4 +90,8 @@ python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 --max_depth=2 
 # Use custom seed URLs
 python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 \
   --seed_urls='["https://github.com/meta-llama/llama-stack","https://github.com/meta-llama/llama-stack-client-python"]'
+
+# Custom system prompt for the RAG query
+python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 \
+  --system_prompt="Answer concisely in bullet points. Always cite source URLs."
 ```
