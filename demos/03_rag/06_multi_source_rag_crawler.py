@@ -429,6 +429,62 @@ def _chunk_text(text: str, chunk_size: int = 512, overlap: int = 50) -> list[str
     return chunks
 
 
+def _to_dict(value) -> dict | None:
+    """Convert an SDK object to a dict if possible."""
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if hasattr(value, "dict"):
+        return value.dict()
+    return None
+
+
+def _print_retrieved_sources(response) -> None:
+    """Extract and display file_search results from a Responses API response."""
+    output_items = getattr(response, "output", None) or []
+    if isinstance(output_items, dict):
+        output_items = [output_items]
+    if not isinstance(output_items, list):
+        return
+
+    for item in output_items:
+        item_dict = _to_dict(item) or {}
+        if item_dict.get("type") != "file_search_call":
+            continue
+        results = (
+            item_dict.get("results")
+            or item_dict.get("file_search_call", {}).get("results")
+            or []
+        )
+        if not results:
+            print(colored("[sources] file_search returned no results", "yellow"))
+            return
+        print(f"\n  Retrieved {len(results)} chunks:")
+        for result in results[:5]:
+            r = _to_dict(result) or {}
+            filename = r.get("filename", "unknown")
+            score = r.get("score", "n/a")
+            content_parts = r.get("content") or []
+            snippet = ""
+            for chunk in content_parts:
+                chunk_dict = _to_dict(chunk) or {}
+                text = chunk_dict.get("text")
+                if text:
+                    snippet += text.strip() + " "
+            snippet = snippet.strip()
+            # Show the source URL if embedded in the chunk
+            source_line = ""
+            if snippet.startswith("Source:"):
+                first_line = snippet.split("\n", 1)[0]
+                source_line = f" | {first_line}"
+            preview = snippet[:150] + "..." if len(snippet) > 150 else snippet
+            print(f"  - {filename} (score={score}){source_line}")
+        return
+
+    print(colored("[sources] no file_search results in response", "yellow"))
+
+
 def index_crawled_documents(
     client: LlamaStackClient,
     vector_store_id: str,
@@ -607,9 +663,11 @@ def main(
         response = client.responses.create(
             model=resolved_model,
             instructions=(
-                "Answer based on the documents provided via file_search. "
-                "Include source URLs when referencing specific information. "
-                "If the documents contain a crawl path, mention how the information was discovered."
+                "Answer the question using the documents provided via file_search. "
+                "Each document chunk includes a 'Source:' URL and a 'Crawl path:' showing "
+                "how it was discovered (e.g. README -> linked doc -> linked issue). "
+                "When referencing information, cite the source URL. "
+                "If relevant, mention the crawl path to show how the information connects."
             ),
             input=[{"role": "user", "content": question}],
             tools=[{"type": "file_search", "vector_store_ids": [vector_store.id]}],
@@ -618,7 +676,10 @@ def main(
             stream=False,
         )
 
-        print(colored("[response]", "green"), response.output_text or response.output)
+        # Show which sources were retrieved (with scores and provenance)
+        _print_retrieved_sources(response)
+
+        print(colored("\n[response]", "green"), response.output_text or response.output)
 
     finally:
         if vector_store is not None:
