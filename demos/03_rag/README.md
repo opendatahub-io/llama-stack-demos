@@ -71,3 +71,22 @@ python -m demos.03_rag.04_chunking_strategies localhost 8321
 ```bash
 python -m demos.03_rag.05_hybrid_search localhost 8321
 ```
+
+### Demo 6: Multi-Source RAG Crawler
+**File**: `06_multi_source_rag_crawler.py`
+
+**Concepts**: Cross-source crawling, link following, breadth-first discovery, crawl provenance, incremental indexing, content deduplication
+
+**Description**: Builds a document crawler that starts from seed URLs and follows links across platforms (GitHub, web pages). Discovered documents are indexed into a Llama Stack vector store with provenance metadata, enabling RAG queries across an automatically-discovered knowledge graph. Demonstrates content hashing for deduplication and configurable depth/document limits.
+
+**Run**:
+```bash
+python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321
+
+# Customize crawl parameters
+python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 --max_depth=2 --max_docs=20
+
+# Use custom seed URLs
+python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 \
+  --seed_urls='["https://github.com/meta-llama/llama-stack","https://github.com/meta-llama/llama-stack-client-python"]'
+```
