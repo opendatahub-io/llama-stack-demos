@@ -3,13 +3,22 @@ Demo: Multi-Source RAG Crawler
 
 Description:
 This demo teaches how to build a cross-source document crawler that follows
-links between different platforms (GitHub, web pages) and indexes all discovered
-documents into a Llama Stack vector store for RAG queries.
+links between different platforms (GitHub, GitLab, Confluence, Jira, Google Docs)
+and indexes all discovered documents into a Llama Stack vector store for RAG
+queries.
 
 Most RAG examples index documents from a single source. In practice, knowledge
 is spread across platforms -- a GitHub README links to a design doc, which links
 to an issue tracker, which references another repo. This demo shows how to
 automatically discover and index that connected knowledge graph.
+
+Supported source types:
+- GitHub repositories and files (public or via GITHUB_TOKEN)
+- GitLab repositories and files (via GITLAB_TOKEN)
+- Confluence pages (via CONFLUENCE_URL + CONFLUENCE_TOKEN)
+- Jira issues (via JIRA_URL + JIRA_TOKEN)
+- Google Docs (via GOOGLE_API_KEY or service account)
+- Generic web pages (markdown, text, HTML)
 
 Learning Objectives:
 - Detect and extract links to different platforms from document content
@@ -18,6 +27,7 @@ Learning Objectives:
 - Index crawled documents into Llama Stack vector stores with metadata
 - Query across all discovered documents with file_search
 - Use incremental indexing with content hashing to avoid re-processing
+- Add new source types by registering a fetcher function
 """
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -29,7 +39,10 @@ Learning Objectives:
 from __future__ import annotations
 
 import hashlib
+import html
+import os
 import re
+import urllib.parse
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
@@ -65,6 +78,13 @@ def _maybe_load_dotenv() -> None:
         load_dotenv()
 
 
+def _strip_html(text: str) -> str:
+    """Strip HTML tags and decode entities."""
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 # ---------------------------------------------------------------------------
 # Link Detection
 # ---------------------------------------------------------------------------
@@ -74,6 +94,10 @@ class LinkType(str, Enum):
     """Supported link/source types for crawling."""
 
     GITHUB = "github"
+    GITLAB = "gitlab"
+    CONFLUENCE = "confluence"
+    JIRA = "jira"
+    GOOGLE_DOCS = "google_docs"
     WEB = "web"
 
 
@@ -87,10 +111,26 @@ class DetectedLink:
 
 
 # Regex patterns for detecting links to different platforms.
-# Extend this dict to support additional sources (GitLab, Confluence, Jira, etc.).
 LINK_PATTERNS: dict[LinkType, re.Pattern] = {
     LinkType.GITHUB: re.compile(
         r"https?://github\.com/([^/\s]+/[^/\s]+)(?:/(?:blob|tree)/[^/\s]+/([^\s)\"<>]*))?",
+        re.IGNORECASE,
+    ),
+    LinkType.GITLAB: re.compile(
+        r"https?://gitlab[^/\s]*/([^/\s]+/[^/\s]+)(?:/[-/]?(?:blob|tree)/[^/\s]+/([^\s)\"<>]*))?",
+        re.IGNORECASE,
+    ),
+    LinkType.CONFLUENCE: re.compile(
+        r"https?://[^\s/]*confluence[^\s/]*(?:/wiki)?/"
+        r"(?:spaces/([^/\s]+)/pages/(\d+)|pages/viewpage\.action\?pageId=(\d+))",
+        re.IGNORECASE,
+    ),
+    LinkType.JIRA: re.compile(
+        r"https?://[^\s/]*(?:jira|issues)[^\s/]*/browse/([A-Z]+-\d+)",
+        re.IGNORECASE,
+    ),
+    LinkType.GOOGLE_DOCS: re.compile(
+        r"https?://docs\.google\.com/document/d/([a-zA-Z0-9_-]+)",
         re.IGNORECASE,
     ),
     LinkType.WEB: re.compile(
@@ -127,16 +167,39 @@ def detect_links(
                 continue
             seen.add(url)
 
-            if link_type == LinkType.GITHUB:
-                repo = match.group(1)
-                path = match.group(2)
-                identifier = f"{repo}:{path}" if path else repo
-            else:
-                identifier = url
-
+            identifier = _extract_identifier(link_type, match, url)
             links.append(DetectedLink(link_type=link_type, identifier=identifier, url=url))
 
     return links
+
+
+def _extract_identifier(link_type: LinkType, match: re.Match, url: str) -> str:
+    """Extract a source-specific identifier from a regex match."""
+    if link_type == LinkType.GITHUB:
+        repo = match.group(1)
+        path = match.group(2)
+        return f"{repo}:{path}" if path else repo
+
+    if link_type == LinkType.GITLAB:
+        repo = match.group(1)
+        path = match.group(2)
+        return f"{repo}:{path}" if path else repo
+
+    if link_type == LinkType.CONFLUENCE:
+        space, page_id, viewpage_id = match.group(1), match.group(2), match.group(3)
+        if page_id:
+            return f"{space}:{page_id}"
+        if viewpage_id:
+            return viewpage_id
+        return url
+
+    if link_type == LinkType.JIRA:
+        return match.group(1)
+
+    if link_type == LinkType.GOOGLE_DOCS:
+        return match.group(1)
+
+    return url
 
 
 # ---------------------------------------------------------------------------
@@ -329,28 +392,31 @@ class MultiSourceCrawler:
 # ---------------------------------------------------------------------------
 
 
-def fetch_github_raw(
+def fetch_github(
     identifier: str, url: str, trace: CrawlTrace
 ) -> CrawledDocument | None:
     """Fetch a file from GitHub via the raw content URL.
 
     Works for public repositories without authentication.
-    Set ``GITHUB_TOKEN`` to access private repos.
+    Set ``GITHUB_TOKEN`` env var to access private repos.
     """
     if _requests is None:
         print(colored("  requests library not installed, skipping GitHub fetch", "yellow"))
         return None
 
     # Build raw URL from github.com URL
-    raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/").replace("/tree/", "/")
+    raw_url = (
+        url.replace("github.com", "raw.githubusercontent.com")
+        .replace("/blob/", "/")
+        .replace("/tree/", "/")
+    )
     if raw_url == url:
         # URL was just a repo root -- try fetching README
-        parts = identifier.split(":")
-        repo = parts[0]
+        repo = identifier.split(":")[0]
         raw_url = f"https://raw.githubusercontent.com/{repo}/main/README.md"
 
     headers = {}
-    token = __import__("os").environ.get("GITHUB_TOKEN")
+    token = os.environ.get("GITHUB_TOKEN")
     if token:
         headers["Authorization"] = f"token {token}"
 
@@ -358,18 +424,242 @@ def fetch_github_raw(
     if resp.status_code != 200:
         return None
 
-    content = resp.text[:15000]  # Limit content size
+    content = resp.text[:15000]
     repo = identifier.split(":")[0]
     path = identifier.split(":", 1)[1] if ":" in identifier else "README.md"
-    title = f"{repo}/{path}"
 
     return CrawledDocument(
         url=url,
-        title=title,
+        title=f"{repo}/{path}",
         content=content,
         source_type=LinkType.GITHUB,
         trace=trace,
         metadata={"repo": repo, "path": path},
+    )
+
+
+def fetch_gitlab(
+    identifier: str, url: str, trace: CrawlTrace
+) -> CrawledDocument | None:
+    """Fetch a file from a GitLab repository.
+
+    Requires ``GITLAB_TOKEN`` env var. Optionally set ``GITLAB_URL`` to override
+    the base URL (defaults to extracting it from the link URL).
+
+    Example env::
+
+        GITLAB_URL=https://gitlab.com
+        GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+    """
+    if _requests is None:
+        return None
+
+    token = os.environ.get("GITLAB_TOKEN")
+    if not token:
+        return None
+
+    # Determine GitLab base URL from the matched URL
+    parsed = urllib.parse.urlparse(url)
+    base_url = os.environ.get("GITLAB_URL", f"{parsed.scheme}://{parsed.netloc}")
+
+    repo = identifier.split(":")[0]
+    path = identifier.split(":", 1)[1] if ":" in identifier else "README.md"
+    project_encoded = urllib.parse.quote(repo, safe="")
+
+    # Try main branch, then master
+    for ref in ("main", "master"):
+        file_url = (
+            f"{base_url}/api/v4/projects/{project_encoded}"
+            f"/repository/files/{urllib.parse.quote(path, safe='')}/raw"
+        )
+        headers = {"PRIVATE-TOKEN": token}
+        resp = _requests.get(file_url, headers=headers, params={"ref": ref}, timeout=15)
+        if resp.status_code == 200:
+            content = resp.text[:15000]
+            web_url = f"{base_url}/{repo}/-/blob/{ref}/{path}"
+            return CrawledDocument(
+                url=web_url,
+                title=f"{repo}/{path}",
+                content=content,
+                source_type=LinkType.GITLAB,
+                trace=trace,
+                metadata={"repo": repo, "path": path, "ref": ref},
+            )
+
+    return None
+
+
+def fetch_confluence(
+    identifier: str, url: str, trace: CrawlTrace
+) -> CrawledDocument | None:
+    """Fetch a Confluence page by page ID.
+
+    Requires ``CONFLUENCE_URL`` and ``CONFLUENCE_TOKEN`` env vars.
+
+    Example env::
+
+        CONFLUENCE_URL=https://confluence.example.com
+        CONFLUENCE_TOKEN=your-personal-access-token
+    """
+    if _requests is None:
+        return None
+
+    confluence_url = os.environ.get("CONFLUENCE_URL")
+    token = os.environ.get("CONFLUENCE_TOKEN")
+    if not confluence_url or not token:
+        return None
+
+    # Extract page ID from identifier ("SPACE:12345" or just "12345")
+    page_id = identifier.split(":")[-1] if ":" in identifier else identifier
+
+    api_url = f"{confluence_url}/rest/api/content/{page_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {"expand": "body.storage,space"}
+
+    resp = _requests.get(api_url, headers=headers, params=params, timeout=15)
+    if resp.status_code != 200:
+        return None
+
+    data = resp.json()
+    title = data.get("title", f"Page {page_id}")
+    space_key = data.get("space", {}).get("key", "")
+    body_html = data.get("body", {}).get("storage", {}).get("value", "")
+    body_text = _strip_html(body_html)
+
+    web_url = f"{confluence_url}/wiki/spaces/{space_key}/pages/{page_id}"
+
+    content = f"Confluence Page: {title}\nSpace: {space_key}\nURL: {web_url}\n\n{body_text}"
+
+    return CrawledDocument(
+        url=web_url,
+        title=title,
+        content=content[:15000],
+        source_type=LinkType.CONFLUENCE,
+        trace=trace,
+        metadata={"page_id": page_id, "space": space_key},
+    )
+
+
+def fetch_jira(
+    identifier: str, url: str, trace: CrawlTrace
+) -> CrawledDocument | None:
+    """Fetch a Jira issue by key (e.g. PROJECT-123).
+
+    Requires ``JIRA_URL`` and ``JIRA_TOKEN`` env vars.
+
+    Example env::
+
+        JIRA_URL=https://jira.example.com
+        JIRA_TOKEN=your-personal-access-token
+    """
+    if _requests is None:
+        return None
+
+    jira_url = os.environ.get("JIRA_URL")
+    token = os.environ.get("JIRA_TOKEN")
+    if not jira_url or not token:
+        return None
+
+    issue_key = identifier  # e.g. "PROJECT-123"
+    api_url = f"{jira_url}/rest/api/2/issue/{issue_key}"
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {"fields": "summary,description,status,project,issuetype,comment"}
+
+    resp = _requests.get(api_url, headers=headers, params=params, timeout=15)
+    if resp.status_code != 200:
+        return None
+
+    data = resp.json()
+    fields = data.get("fields", {})
+    summary = fields.get("summary", "")
+    description = fields.get("description", "") or ""
+    status = fields.get("status", {}).get("name", "")
+    project = fields.get("project", {}).get("name", "")
+    issue_type = fields.get("issuetype", {}).get("name", "")
+
+    web_url = f"{jira_url}/browse/{issue_key}"
+
+    content = (
+        f"Jira Issue: {issue_key}\n"
+        f"Summary: {summary}\n"
+        f"Project: {project}\n"
+        f"Type: {issue_type}\n"
+        f"Status: {status}\n"
+        f"URL: {web_url}\n\n"
+        f"Description:\n{description[:5000]}"
+    )
+
+    # Include recent comments if present
+    comments = fields.get("comment", {}).get("comments", [])
+    if comments:
+        content += "\n\nComments:\n"
+        for comment in comments[-5:]:
+            author = comment.get("author", {}).get("displayName", "Unknown")
+            body = comment.get("body", "")[:500]
+            content += f"\n[{author}]: {body}\n"
+
+    return CrawledDocument(
+        url=web_url,
+        title=f"{issue_key}: {summary}",
+        content=content[:15000],
+        source_type=LinkType.JIRA,
+        trace=trace,
+        metadata={"key": issue_key, "project": project, "status": status},
+    )
+
+
+def fetch_google_doc(
+    identifier: str, url: str, trace: CrawlTrace
+) -> CrawledDocument | None:
+    """Fetch a Google Doc by document ID.
+
+    Requires either ``GOOGLE_API_KEY`` env var (simplest) or a Google service
+    account credentials file at ``GOOGLE_APPLICATION_CREDENTIALS``.
+
+    Example env::
+
+        GOOGLE_API_KEY=AIzaSy...
+    """
+    if _requests is None:
+        return None
+
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+
+    doc_id = identifier
+    api_url = f"https://docs.googleapis.com/v1/documents/{doc_id}"
+    params = {"key": api_key}
+
+    resp = _requests.get(api_url, params=params, timeout=15)
+    if resp.status_code != 200:
+        return None
+
+    data = resp.json()
+    title = data.get("title", f"Doc {doc_id}")
+
+    # Extract text from the document body
+    text_parts: list[str] = []
+    for element in data.get("body", {}).get("content", []):
+        paragraph = element.get("paragraph", {})
+        for text_element in paragraph.get("elements", []):
+            text_run = text_element.get("textRun", {})
+            text = text_run.get("content", "")
+            if text.strip():
+                text_parts.append(text)
+
+    body_text = "".join(text_parts)
+    web_url = f"https://docs.google.com/document/d/{doc_id}"
+
+    content = f"Google Doc: {title}\nURL: {web_url}\n\n{body_text}"
+
+    return CrawledDocument(
+        url=web_url,
+        title=title,
+        content=content[:15000],
+        source_type=LinkType.GOOGLE_DOCS,
+        trace=trace,
+        metadata={"doc_id": doc_id},
     )
 
 
@@ -385,7 +675,6 @@ def fetch_web_page(
         return None
 
     content = resp.text[:15000]
-    # Use the last path segment as a rough title
     title = url.rsplit("/", 1)[-1] or url
 
     return CrawledDocument(
@@ -478,7 +767,6 @@ def _print_retrieved_sources(response) -> None:
             if snippet.startswith("Source:"):
                 first_line = snippet.split("\n", 1)[0]
                 source_line = f" | {first_line}"
-            preview = snippet[:150] + "..." if len(snippet) > 150 else snippet
             print(f"  - {filename} (score={score}){source_line}")
         return
 
@@ -539,11 +827,20 @@ def index_crawled_documents(
 # Main demo
 # ---------------------------------------------------------------------------
 
-# Default seed URLs for demonstration -- two public GitHub READMEs that
-# cross-reference each other and link to external docs.
+# Default seed URLs for demonstration.
 DEFAULT_SEEDS = [
     ("https://github.com/meta-llama/llama-stack", LinkType.GITHUB, "meta-llama/llama-stack"),
 ]
+
+
+def _detect_seed_type(url: str) -> tuple[LinkType, str]:
+    """Auto-detect the source type and identifier from a seed URL."""
+    for link_type, pattern in LINK_PATTERNS.items():
+        match = pattern.search(url)
+        if match:
+            identifier = _extract_identifier(link_type, match, url)
+            return link_type, identifier
+    return LinkType.WEB, url
 
 
 def main(
@@ -566,18 +863,59 @@ def main(
         embedding_model_id: Embedding model (auto-detected if omitted).
         max_depth: How many link-hops to follow from seed documents.
         max_docs: Maximum total documents to crawl.
-        seed_urls: GitHub URLs to start crawling from. Defaults to llama-stack repo.
+        seed_urls: Seed URLs to start crawling from. Supports GitHub, GitLab,
+            Confluence, Jira, Google Docs, and web URLs. Source type is
+            auto-detected. Defaults to the llama-stack GitHub repo.
         question: Question to answer using the crawled knowledge base.
         system_prompt: Custom system prompt for the RAG query. If omitted, a
             default prompt that instructs the model to cite sources and crawl
             paths is used.
+
+    Environment variables for authenticated sources:
+        GITHUB_TOKEN: GitHub personal access token (for private repos).
+        GITLAB_TOKEN: GitLab personal access token.
+        GITLAB_URL: GitLab base URL (auto-detected from seed URL if omitted).
+        CONFLUENCE_URL: Confluence base URL (e.g. https://confluence.example.com).
+        CONFLUENCE_TOKEN: Confluence personal access token.
+        JIRA_URL: Jira base URL (e.g. https://jira.example.com).
+        JIRA_TOKEN: Jira personal access token.
+        GOOGLE_API_KEY: Google API key for Docs access.
+
+    Examples:
+        # GitHub (public, no auth needed)
+        python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321
+
+        # GitLab
+        GITLAB_TOKEN=glpat-xxx python -m demos.03_rag.06_multi_source_rag_crawler \\
+          localhost 8321 --seed_urls='["https://gitlab.com/myorg/myproject"]'
+
+        # Confluence
+        CONFLUENCE_URL=https://confluence.example.com CONFLUENCE_TOKEN=xxx \\
+          python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 \\
+          --seed_urls='["https://confluence.example.com/wiki/spaces/TEAM/pages/12345"]'
+
+        # Jira
+        JIRA_URL=https://jira.example.com JIRA_TOKEN=xxx \\
+          python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 \\
+          --seed_urls='["https://jira.example.com/browse/PROJ-100"]' \\
+          --question="What is the status of PROJ-100?"
+
+        # Google Docs
+        GOOGLE_API_KEY=AIzaSy... python -m demos.03_rag.06_multi_source_rag_crawler \\
+          localhost 8321 \\
+          --seed_urls='["https://docs.google.com/document/d/1abc...xyz"]'
+
+        # Mixed sources (crawl will follow links between them)
+        python -m demos.03_rag.06_multi_source_rag_crawler localhost 8321 \\
+          --seed_urls='["https://github.com/org/repo","https://jira.example.com/browse/PROJ-1"]' \\
+          --max_depth=2
     """
     _maybe_load_dotenv()
 
     # -- Connect to Llama Stack -------------------------------------------------
     client = LlamaStackClient(base_url=f"http://{host}:{port}")
 
-    resolved_model = model_id or __import__("os").environ.get("LLAMA_STACK_MODEL")
+    resolved_model = model_id or os.environ.get("LLAMA_STACK_MODEL")
     if resolved_model is None:
         resolved_model = get_any_available_chat_model(client)
         if resolved_model is None:
@@ -609,20 +947,42 @@ def main(
     print(f"  max_depth={max_depth}, max_docs={max_docs}")
 
     crawler = MultiSourceCrawler(max_depth=max_depth, max_docs=max_docs)
-    crawler.register_fetcher(LinkType.GITHUB, fetch_github_raw)
+
+    # Register all available fetchers
+    crawler.register_fetcher(LinkType.GITHUB, fetch_github)
+    crawler.register_fetcher(LinkType.GITLAB, fetch_gitlab)
+    crawler.register_fetcher(LinkType.CONFLUENCE, fetch_confluence)
+    crawler.register_fetcher(LinkType.JIRA, fetch_jira)
+    crawler.register_fetcher(LinkType.GOOGLE_DOCS, fetch_google_doc)
     crawler.register_fetcher(LinkType.WEB, fetch_web_page)
 
+    # Show which sources have credentials configured
+    available = ["github (public)"]
+    if os.environ.get("GITHUB_TOKEN"):
+        available[-1] = "github (authenticated)"
+    if os.environ.get("GITLAB_TOKEN"):
+        available.append("gitlab")
+    if os.environ.get("CONFLUENCE_URL") and os.environ.get("CONFLUENCE_TOKEN"):
+        available.append("confluence")
+    if os.environ.get("JIRA_URL") and os.environ.get("JIRA_TOKEN"):
+        available.append("jira")
+    if os.environ.get("GOOGLE_API_KEY"):
+        available.append("google_docs")
+    available.append("web")
+    print(f"  Available sources: {', '.join(available)}")
+
+    # Add seeds with auto-detected source types
     if seed_urls:
         for url in seed_urls:
-            if "github.com" in url:
-                repo = url.replace("https://github.com/", "").replace("http://github.com/", "").strip("/")
-                crawler.add_seed(url, LinkType.GITHUB, repo)
-            else:
-                crawler.add_seed(url, LinkType.WEB, url)
+            link_type, identifier = _detect_seed_type(url)
+            print(f"  Seed: {url} (detected as {link_type.value})")
+            crawler.add_seed(url, link_type, identifier)
     else:
         for url, link_type, identifier in DEFAULT_SEEDS:
+            print(f"  Seed: {url} ({link_type.value})")
             crawler.add_seed(url, link_type, identifier)
 
+    print()
     documents = crawler.crawl()
     stats = crawler.stats
 
