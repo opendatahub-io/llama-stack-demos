@@ -555,6 +555,7 @@ def main(
     max_docs: int = 10,
     seed_urls: list[str] | None = None,
     question: str = "What is Llama Stack and what APIs does it provide?",
+    system_prompt: str | None = None,
 ) -> None:
     """Run the multi-source RAG crawler demo.
 
@@ -567,6 +568,9 @@ def main(
         max_docs: Maximum total documents to crawl.
         seed_urls: GitHub URLs to start crawling from. Defaults to llama-stack repo.
         question: Question to answer using the crawled knowledge base.
+        system_prompt: Custom system prompt for the RAG query. If omitted, a
+            default prompt that instructs the model to cite sources and crawl
+            paths is used.
     """
     _maybe_load_dotenv()
 
@@ -660,15 +664,19 @@ def main(
         print(colored("\n=== Phase 3: Querying with RAG ===\n", "cyan"))
         print(f"  Question: {question}\n")
 
+        default_instructions = (
+            "Answer the question using the documents provided via file_search. "
+            "Each document chunk includes a 'Source:' URL and a 'Crawl path:' showing "
+            "how it was discovered (e.g. README -> linked doc -> linked issue). "
+            "When referencing information, cite the source URL. "
+            "If relevant, mention the crawl path to show how the information connects."
+        )
+        instructions = system_prompt or default_instructions
+        print(f"  System prompt: {instructions[:100]}{'...' if len(instructions) > 100 else ''}\n")
+
         response = client.responses.create(
             model=resolved_model,
-            instructions=(
-                "Answer the question using the documents provided via file_search. "
-                "Each document chunk includes a 'Source:' URL and a 'Crawl path:' showing "
-                "how it was discovered (e.g. README -> linked doc -> linked issue). "
-                "When referencing information, cite the source URL. "
-                "If relevant, mention the crawl path to show how the information connects."
-            ),
+            instructions=instructions,
             input=[{"role": "user", "content": question}],
             tools=[{"type": "file_search", "vector_store_ids": [vector_store.id]}],
             tool_choice={"type": "file_search"},
