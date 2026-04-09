@@ -67,7 +67,7 @@ def main(
     print(colored("\n--- String input ---", "cyan"))
     response = client.responses.create(
         model=resolved_model,
-        input="Give a one-sentence description of Llama Stack.",
+        input="What is open-source software in one sentence?",
     )
     print(response.output_text)
 
@@ -78,7 +78,7 @@ def main(
         input=[
             {
                 "role": "user",
-                "content": "List three benefits of running open-source LLMs locally.",
+                "content": "What is open-source software in one sentence?",
             },
         ],
     )
